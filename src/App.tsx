@@ -65,7 +65,8 @@ const tools: Tool[] = [
     icon: <FileText className="w-5 h-5" />,
     badge: "Internal",
     category: "Application Tools",
-    comingSoon: true,
+    comingSoon: false,
+    href: "/tools/cover-letter",
     aiSummary: "AI-generated cover letters are becoming essential in modern job applications. Our tool will analyze job postings, company culture, and your background to create tailored letters that significantly improve response rates."
   },
   {
@@ -352,7 +353,11 @@ export default function App() {
       return;
     }
     if (tool.href) {
-      window.open(tool.href, '_blank');
+      if (tool.href.startsWith('/')) {
+        window.location.href = tool.href;
+      } else {
+        window.open(tool.href, '_blank');
+      }
     }
   };
 
