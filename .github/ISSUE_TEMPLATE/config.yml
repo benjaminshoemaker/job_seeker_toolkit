@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & ideas (Discussions)
+    url: https://github.com/benjaminshoemaker/job_seeker_toolkit/discussions
+    about: Ask questions, share ideas, or get feedback before filing an issue.
+
