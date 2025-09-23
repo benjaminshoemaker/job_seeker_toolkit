@@ -21,7 +21,7 @@ describe('CoverLetterPage', () => {
     render(<CoverLetterPage />);
     expect(screen.getByText(/Cover Letter Generator/i)).toBeInTheDocument();
     expect(screen.getByText(/Choose how to provide your resume\./i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Job Description \(JD\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Job Description \(JD\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Generate/i })).toBeInTheDocument();
     // Output textarea
     const outputs = screen.getAllByRole('textbox');
