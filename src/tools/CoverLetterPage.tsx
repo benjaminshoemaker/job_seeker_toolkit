@@ -4,7 +4,8 @@ import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { Toaster } from "../components/ui/sonner";
 import { toast } from "sonner";
-import { Loader2, Clipboard, ArrowLeft, FileText } from "lucide-react";
+import { Loader2, Clipboard, ArrowLeft, FileText, Upload, List as ListIcon, File as FileIcon } from "lucide-react";
+import { Input } from "../components/ui/input";
 
 const MAX_INPUT = 10_000;
 const MODEL_TIMEOUT_MS = 20_000;
@@ -81,12 +82,19 @@ function parseAndValidateCitations(
   return { paragraphs, warnings };
 }
 
+type ResumeMode = 'choice' | 'upload' | 'paste' | 'editor';
+
 export default function CoverLetterPage() {
   const [resume, setResume] = useState("");
   const [jd, setJd] = useState("");
   const [loading, setLoading] = useState(false);
   const [letter, setLetter] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const [mode, setMode] = useState<ResumeMode>('choice');
+  const [extracted, setExtracted] = useState("");
+  const [edited, setEdited] = useState(false);
+  const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
 
   // Optional latency test: /tools/cover-letter?delay=8000
   const delayParam = useMemo(() => {
@@ -102,7 +110,7 @@ export default function CoverLetterPage() {
       return;
     }
     if (!resume.trim() || !jd.trim()) {
-      toast.error("Please paste both Resume and JD.");
+      toast.error("Please provide Resume text and paste the JD.");
       return;
     }
 
@@ -155,6 +163,63 @@ export default function CoverLetterPage() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Upload handling
+  const onFileSelected = useCallback(async (file: File | null) => {
+    if (!file) return;
+    setFileMeta({ name: file.name, size: file.size });
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      toast.error('Unsupported file type. Only PDF and DOCX are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large (max 5 MB).');
+      return;
+    }
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/extract-resume', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Extraction failed');
+      const text = String(data?.text || '');
+      const warnings: string[] = Array.isArray(data?.warnings) ? data.warnings : [];
+      if (warnings.length) {
+        for (const w of warnings) toast.message(w);
+      }
+      if (text.length < 300) {
+        toast.message('The extracted text looks quite short. Please review and edit.');
+      }
+      setExtracted(text);
+      setResume(text);
+      setEdited(false);
+      setMode('editor');
+    } catch (e: any) {
+      const msg = String(e?.message || 'Extraction failed');
+      toast.error(msg);
+    }
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    onFileSelected(file || null);
+  }, [onFileSelected]);
+
+  const onResetToExtracted = useCallback(() => {
+    setResume(extracted);
+    setEdited(false);
+  }, [extracted]);
+
+  const onResumeChange = useCallback((val: string) => {
+    if (val.length > MAX_INPUT) {
+      toast.error("Resume exceeds 10k characters.");
+      return;
+    }
+    setResume(val);
+    setEdited(val !== extracted);
+  }, [extracted]);
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
@@ -174,23 +239,124 @@ export default function CoverLetterPage() {
             <CardTitle>Inputs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Resume (paste only)</label>
-              <Textarea
-                value={resume}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.length > MAX_INPUT) {
-                    toast.error("Resume exceeds 10k characters.");
-                    return;
-                  }
-                  setResume(val);
-                }}
-                rows={10}
-                placeholder="Paste your resume bullets or text..."
-              />
-              <div className="text-xs text-muted-foreground mt-1">{resume.length}/{MAX_INPUT}</div>
-            </div>
+            {/* Resume choice / upload / paste / editor */}
+            {mode === 'choice' && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Resume</label>
+                <div className="text-xs text-muted-foreground mb-3">Choose how to provide your resume.</div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setMode('upload')}
+                    className="flex-1 h-10"
+                  >
+                    <Upload className="w-4 h-4 mr-2" /> Upload (PDF/DOCX)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setMode('paste')}
+                    className="flex-1 h-10"
+                  >
+                    <ListIcon className="w-4 h-4 mr-2" /> Paste text
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">Upload is recommended for most resumes. Use paste if your resume is image-only.</div>
+              </div>
+            )}
+
+            {mode === 'upload' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium">Upload Resume</label>
+                  <Button variant="ghost" size="sm" onClick={() => setMode('choice')}>
+                    <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                  </Button>
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload resume (PDF/DOCX)"
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={onDrop}
+                  className="border-2 border-dashed rounded-md p-4 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors hover:border-primary/50"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-5 h-5 text-muted-foreground" />
+                    <div className="text-sm">Drag and drop your resume here</div>
+                    <div className="text-xs text-muted-foreground">PDF or DOCX, up to 5 MB</div>
+                    <div className="mt-2">
+                      <Button size="sm" asChild>
+                        <label className="cursor-pointer">
+                          Choose file
+                          <Input 
+                            type="file" 
+                            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                            onChange={(e) => onFileSelected(e.target.files?.[0] || null)}
+                            className="sr-only"
+                          />
+                        </label>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">After upload, you can edit the extracted text.</div>
+              </div>
+            )}
+
+            {mode === 'paste' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium">Paste Resume Text</label>
+                  <Button variant="ghost" size="sm" onClick={() => setMode('choice')}>
+                    <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                  </Button>
+                </div>
+                <Textarea
+                  value={resume}
+                  onChange={(e) => onResumeChange(e.target.value)}
+                  rows={10}
+                  placeholder="Paste your resume bullets or text..."
+                />
+                <div className="text-xs text-muted-foreground">{resume.length}/{MAX_INPUT}</div>
+                <div className="flex items-center justify-end">
+                  <Button size="sm" onClick={() => { setExtracted(resume); setEdited(false); setMode('editor'); }} disabled={!resume.trim()}>Continue</Button>
+                </div>
+              </div>
+            )}
+
+            {mode === 'editor' && (
+              <div className="space-y-2">
+                {fileMeta && (
+                  <div className="flex items-center justify-between text-sm border rounded-md p-2">
+                    <div className="flex items-center gap-2"><FileIcon className="w-4 h-4" /> {fileMeta.name} <span className="text-muted-foreground">({Math.ceil(fileMeta.size/1024)} KB)</span></div>
+                    <div>
+                      <input
+                        ref={replaceInputRef}
+                        type="file"
+                        className="sr-only"
+                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        aria-label="Replace uploaded resume file"
+                        onChange={(e) => onFileSelected(e.target.files?.[0] || null)}
+                      />
+                      <Button variant="ghost" size="sm" onClick={() => replaceInputRef.current?.click()}>Replace</Button>
+                    </div>
+                  </div>
+                )}
+                <label className="block text-sm font-medium">Resume Text Editor</label>
+                <Textarea
+                  value={resume}
+                  onChange={(e) => onResumeChange(e.target.value)}
+                  rows={10}
+                  placeholder="Edit your resume text..."
+                />
+                <div className="text-xs text-muted-foreground mt-1">{resume.length}/{MAX_INPUT}</div>
+                <div className="flex items-center gap-3">
+                  {edited && <Button variant="outline" size="sm" onClick={onResetToExtracted}>Reset to extracted</Button>}
+                  <button className="underline text-xs" onClick={() => setMode(extracted ? 'upload' : 'paste')}>{extracted ? 'Switch to upload' : 'Switch to paste'}</button>
+                </div>
+                <div className="text-xs text-muted-foreground">Edit your resume text here. Keep bullets short; avoid tables for best results.</div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-2">Job Description (JD)</label>
