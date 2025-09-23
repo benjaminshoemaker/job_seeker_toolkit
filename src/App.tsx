@@ -29,7 +29,8 @@ import {
   Code,
   Github
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import type React from "react";
 
 interface ToolOption {
   name: string;
@@ -46,7 +47,7 @@ interface Tool {
   title: string;
   description: string;
   detailedDescription: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   badge: "Internal" | "External";
   category: string;
   href?: string;
