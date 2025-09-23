@@ -22,6 +22,14 @@ export default defineConfig(({ mode, command }) => {
       poolOptions: {
         threads: { singleThread: true },
       },
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        reportsDirectory: './coverage',
+        all: false,
+        include: ['src/**/*.{ts,tsx}', 'server/**/*.{ts,js}'],
+        exclude: ['**/*.test.*', 'src/components/ui/**/*', 'server/**/*.test.*'],
+      },
     },
   };
 });

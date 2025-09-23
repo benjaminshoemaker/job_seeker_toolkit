@@ -55,6 +55,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_CHAR_LIMIT = 10000;
 
@@ -339,18 +340,36 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                               ({(uploadedFile.size / 1024).toFixed(1)} KB)
                             </span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setUploadedFile(null);
-                              setResumeMode("choose");
-                              setResumeText("");
-                              setOriginalResumeText("");
-                            }}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              ref={replaceFileInputRef}
+                              type="file"
+                              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                              className="hidden"
+                              onChange={handleFileSelect}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => replaceFileInputRef.current?.click()}
+                            >
+                              Replace
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Remove uploaded resume"
+                              title="Remove uploaded resume"
+                              onClick={() => {
+                                setUploadedFile(null);
+                                setResumeMode("choose");
+                                setResumeText("");
+                                setOriginalResumeText("");
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}
