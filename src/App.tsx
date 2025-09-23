@@ -71,18 +71,6 @@ const tools: Tool[] = [
     aiSummary: "AI-generated cover letters are becoming essential in modern job applications. Our tool will analyze job postings, company culture, and your background to create tailored letters that significantly improve response rates."
   },
   {
-    id: "cover-letter-v2",
-    title: "AI Cover Letter Generator (v2)",
-    description: "Experimental v2 UI powered by new Figma design.",
-    detailedDescription: "Try the updated cover letter generator UI based on the latest Figma design. This version uses the same backend as v1 for side-by-side comparison.",
-    icon: <FileText className="w-5 h-5" />,
-    badge: "Internal",
-    category: "Application Tools",
-    comingSoon: false,
-    href: "/tools/cover-letter-v2",
-    aiSummary: "This v2 experience focuses on improved inputs and clearer guidance while keeping the proven backend prompts and validations. Use it to compare results and UX with v1."
-  },
-  {
     id: "resume-builder",
     title: "Resume Builder",
     description: "Build and customize professional resumes with industry-specific templates.",
