@@ -1,0 +1,5 @@
+/* Tailwind utilities-only layer to ensure all spacing/padding/gap classes
+   used by the Figma/shadcn components are available. We disable preflight
+   via tailwind.config.js to avoid duplicate resets. */
+@tailwind utilities;
+

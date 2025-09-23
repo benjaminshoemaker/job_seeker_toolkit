@@ -1,0 +1,10 @@
+/* shadcn/ui token shim loaded at root to ensure consistent variables.
+   Keep this file simple CSS (no @layer) to avoid requiring @tailwind base. */
+:root {
+  /* Radius: align with shadcn default (8px) unless Figma specifies otherwise */
+  --radius: 0.5rem;
+  /* You can define additional tokens here to match Figma exactly. */
+  /* Example: */
+  /* --background: #ffffff; */
+  /* --foreground: #0b0b12; */
+}

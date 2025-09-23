@@ -233,7 +233,7 @@ export default function CoverLetterPage() {
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/")}> 
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
@@ -242,7 +242,7 @@ export default function CoverLetterPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Inputs</CardTitle>
