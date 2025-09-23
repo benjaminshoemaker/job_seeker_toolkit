@@ -280,6 +280,7 @@ export default function CoverLetterPageV2() {
     jdError,
     jdBannerHost,
     MAX_INPUT,
+    onBack: () => (window.location.href = "/"),
   } as any;
 
   return (
@@ -291,10 +292,7 @@ export default function CoverLetterPageV2() {
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <FileText className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-semibold">Cover Letter Generator (v2)</h1>
-          <div className="ml-auto">
-            <Button variant="outline" size="sm" onClick={() => (window.location.href = "/tools/cover-letter")}>Switch to v1</Button>
-          </div>
+          <h1 className="text-xl font-semibold">Cover Letter Generator</h1>
         </div>
       </header>
 

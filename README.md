@@ -54,7 +54,7 @@ Open http://localhost:3000/tools/cover-letter
 - Type-check the project: `npm run typecheck`
 
 Tests included:
-- UI: `src/tools/CoverLetterPage.test.tsx`
+- UI: `src/tools/CoverLetterPageV2.test.tsx`
   - Choice screen renders
   - Paste flow prepopulates editor; reset-to-extracted appears after edits
   - Upload flow shows filename and editor

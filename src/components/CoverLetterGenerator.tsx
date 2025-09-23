@@ -58,38 +58,44 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
 
   const MAX_CHAR_LIMIT = 10000;
 
-  // File upload handling
+  // File upload handling (real backend extraction)
   const handleFileUpload = async (file: File) => {
+    if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File size must be under 5 MB");
       return;
     }
-
-    if (!["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"].includes(file.type)) {
+    const extOk = /\.(pdf|docx)$/i.test(file.name);
+    const typeOk = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ].includes(file.type);
+    if (!extOk && !typeOk) {
       toast.error("Please upload a PDF or DOCX file");
       return;
     }
-
-    // Simulate text extraction (in real app, this would extract from PDF/DOCX)
-    const mockExtractedText = `[Extracted from ${file.name}]\n\nJohn Doe\njohn.doe@email.com\n(555) 123-4567\nLinkedIn: linkedin.com/in/johndoe\n\nPROFESSIONAL SUMMARY\nExperienced software engineer with 5+ years of expertise in full-stack development, specializing in React, Node.js, and cloud technologies. Proven track record of delivering scalable web applications and leading cross-functional teams.\n\nEXPERIENCE\nSenior Software Engineer | TechCorp Inc. | 2021 - Present\n• Led development of customer-facing web applications serving 100K+ users\n• Implemented microservices architecture reducing system latency by 40%\n• Mentored junior developers and conducted code reviews\n\nSoftware Engineer | StartupXYZ | 2019 - 2021\n• Built responsive web applications using React and TypeScript\n• Collaborated with design team to implement pixel-perfect UIs\n• Optimized database queries improving application performance by 25%\n\nEDUCATION\nBachelor of Science in Computer Science\nUniversity of Technology | 2015 - 2019\n\nSKILLS\n• Programming: JavaScript, TypeScript, Python, Java\n• Frontend: React, Vue.js, HTML5, CSS3, Tailwind CSS\n• Backend: Node.js, Express, Django, REST APIs\n• Databases: PostgreSQL, MongoDB, Redis\n• Cloud: AWS, Docker, Kubernetes\n• Tools: Git, Jest, Webpack, CI/CD`;
-
-    const uploadedFileData: UploadedFile = {
-      name: file.name,
-      size: file.size,
-      text: mockExtractedText,
-    };
-
-    setUploadedFile(uploadedFileData);
-    setResumeText(mockExtractedText);
-    setOriginalResumeText(mockExtractedText);
-    setResumeMode("editor");
-
-    if (mockExtractedText.length < 500) {
-      toast("Short extraction detected. You may want to add more details to your resume content.", {
-        duration: 4000,
-      });
-    } else {
-      toast.success("Resume uploaded and text extracted successfully");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/extract-resume", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Extraction failed");
+      const text = String(data?.text || "");
+      const uploadedFileData: UploadedFile = { name: file.name, size: file.size, text };
+      setUploadedFile(uploadedFileData);
+      setResumeText(text);
+      setOriginalResumeText(text);
+      setResumeMode("editor");
+      const warnings: string[] = Array.isArray(data?.warnings) ? data.warnings : [];
+      if (warnings.length) warnings.forEach((w) => toast.message(w));
+      if (text.length < 300) {
+        toast("The extracted text looks quite short. Please review and edit.");
+      } else {
+        toast.success("Resume uploaded and text extracted successfully");
+      }
+    } catch (e: any) {
+      const msg = String(e?.message || "Extraction failed");
+      toast.error(msg);
     }
   };
 
@@ -118,7 +124,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     }
   };
 
-  // Job description URL import
+  // Job description URL import (real backend)
   const handleUrlImport = async () => {
     if (!jobDescUrl.trim()) {
       toast.error("Please enter a valid URL");
@@ -126,16 +132,21 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     }
 
     try {
-      // Simulate URL import (in real app, this would scrape the job posting)
-      const mockJobDescription = `Software Engineer - Full Stack\nTechCorp Inc. | San Francisco, CA\n\nAbout the Role:\nWe are seeking a talented Full Stack Software Engineer to join our growing engineering team. You will be responsible for developing and maintaining our web applications, working with modern technologies including React, Node.js, and AWS.\n\nResponsibilities:\n• Design and develop scalable web applications using React and Node.js\n• Collaborate with cross-functional teams including product, design, and QA\n• Write clean, maintainable, and well-tested code\n• Participate in code reviews and technical discussions\n• Optimize application performance and ensure security best practices\n• Contribute to architectural decisions and technical roadmap\n\nRequirements:\n• 3+ years of experience in full-stack development\n• Strong proficiency in JavaScript, React, and Node.js\n• Experience with databases (PostgreSQL, MongoDB)\n• Familiarity with cloud platforms (AWS preferred)\n• Knowledge of version control systems (Git)\n• Excellent communication and collaboration skills\n• Bachelor's degree in Computer Science or related field\n\nPreferred Qualifications:\n• Experience with TypeScript\n• Knowledge of containerization (Docker, Kubernetes)\n• Familiarity with CI/CD pipelines\n• Previous startup experience\n\nWe offer competitive compensation, comprehensive benefits, and the opportunity to work with cutting-edge technologies in a fast-paced environment.`;
-
-      const hostname = new URL(jobDescUrl).hostname;
-      setJobDescText(mockJobDescription);
-      setImportedFromUrl(hostname);
-      setJobDescMode("editor");
-      toast.success(`Job description imported from ${hostname}`);
-    } catch (error) {
-      toast.error("Unable to import from URL. Please try pasting the job description text instead.");
+      const res = await fetch('/api/jd-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: jobDescUrl.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Import failed');
+      const text = String(data?.text || '');
+      const host = String(data?.host || '');
+      setJobDescText(text);
+      setImportedFromUrl(host);
+      setJobDescMode('editor');
+      toast.success(host ? `Job description imported from ${host}` : 'Job description imported');
+    } catch (error: any) {
+      toast.error(String(error?.message || 'Unable to import from URL. Please try pasting the job description text instead.'));
     }
   };
 
@@ -173,28 +184,18 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     setIsGenerating(true);
 
     try {
-      // Simulate AI generation (in real app, this would call your AI service)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const mockGeneratedLetter = `Dear Hiring Manager,
-
-I am writing to express my strong interest in the Software Engineer - Full Stack position at TechCorp Inc. With over 5 years of experience in full-stack development and a proven track record of delivering scalable web applications, I am excited about the opportunity to contribute to your growing engineering team.
-
-In my current role as Senior Software Engineer at TechCorp Inc., I have successfully led the development of customer-facing web applications serving over 100,000 users, directly aligning with your need for someone who can design and develop scalable web applications using React and Node.js. My experience implementing microservices architecture that reduced system latency by 40% demonstrates my ability to optimize application performance and contribute to architectural decisions, which are key requirements for this role. Additionally, my background in mentoring junior developers and conducting code reviews positions me well to participate in your collaborative code review process and technical discussions.
-
-My technical expertise spans the full stack you're seeking, including strong proficiency in JavaScript, React, and Node.js, along with extensive experience with databases like PostgreSQL and MongoDB. I have hands-on experience with AWS cloud services and am well-versed in version control systems, particularly Git. My Bachelor's degree in Computer Science from the University of Technology, combined with my practical experience at both established companies and startups, gives me the diverse perspective and technical foundation you're looking for.
-
-I am particularly drawn to TechCorp Inc.'s commitment to cutting-edge technologies and fast-paced innovation. I am excited about the opportunity to bring my passion for clean, maintainable code and my collaborative approach to your team.
-
-Thank you for considering my application. I look forward to discussing how my experience and enthusiasm can contribute to TechCorp Inc.'s continued success.
-
-Sincerely,
-John Doe`;
-
-      setGeneratedLetter(mockGeneratedLetter);
-      toast.success("Cover letter generated successfully!");
-    } catch (error) {
-      toast.error("Failed to generate cover letter. Please try again.");
+      const res = await fetch('/api/cover-letter/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume: resumeText, jd: jobDescText }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Generation failed');
+      const letter = String(data?.letter || '');
+      setGeneratedLetter(letter);
+      toast.success('Cover letter generated successfully!');
+    } catch (error: any) {
+      toast.error(String(error?.message || 'Failed to generate cover letter. Please try again.'));
     } finally {
       setIsGenerating(false);
     }
