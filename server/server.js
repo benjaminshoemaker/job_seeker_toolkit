@@ -5,6 +5,10 @@ import { createServer } from 'node:http';
 import { readFileSync, statSync, createReadStream, existsSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { extractResumeFromBuffer, OCR_WARNING, isPDF, isDOCX } from './extract.js';
+import { extractJD } from './jdExtractor.js';
+import { URL as NodeURL } from 'node:url';
+import { isIP } from 'node:net';
+import { lookup } from 'node:dns/promises';
 import Busboy from 'busboy';
 
 const PORT = Number(process.env.PORT || 8787);
@@ -33,6 +37,8 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 const MAX_INPUT = 10_000;
 const MODEL_TIMEOUT_MS = 20_000;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+const JD_FETCH_TIMEOUT_MS = 10_000;
+const JD_MAX_BYTES = 3 * 1024 * 1024; // 3 MB cap
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -338,6 +344,87 @@ const server = createServer(async (req, res) => {
       } catch (e) {
         const msg = /too large/i.test(String(e?.message || '')) ? 'File too large (max 5 MB).' : 'Extraction failed. The file may be corrupted.';
         return sendJSON(res, /too large/i.test(String(e?.message || '')) ? 413 : 400, { error: msg });
+      }
+    }
+
+    if (req.url === '/api/jd-from-url' && req.method === 'POST') {
+      let body;
+      try { body = await parseBody(req); } catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
+      const urlStr = String(body?.url || '').trim();
+      if (!urlStr) return sendJSON(res, 400, { error: 'URL is required.' });
+      let parsed;
+      try { parsed = new NodeURL(urlStr); } catch { return sendJSON(res, 400, { error: 'Invalid URL.' }); }
+      if (parsed.protocol !== 'https:') return sendJSON(res, 400, { error: 'Only HTTPS URLs are supported.' });
+      // SSRF guard: block localhost and private ranges via DNS resolution
+      const host = parsed.hostname;
+      try {
+        const { address } = await lookup(host, { all: false });
+        const ip = address;
+        const isV4 = isIP(ip) === 4;
+        const isV6 = isIP(ip) === 6;
+        const isPrivateV4 = isV4 && (
+          ip.startsWith('10.') || ip.startsWith('127.') || ip.startsWith('192.168.') || (ip.startsWith('172.') && (() => { const n = parseInt(ip.split('.')[1], 10); return n >= 16 && n <= 31; })())
+        );
+        const isLoopbackV6 = isV6 && (ip === '::1' || ip.startsWith('fe80:'));
+        if (isPrivateV4 || isLoopbackV6) {
+          return sendJSON(res, 400, { error: 'Unsupported or private address.' });
+        }
+      } catch {
+        return sendJSON(res, 400, { error: 'DNS resolution failed.' });
+      }
+
+      // Fetch with redirect cap and size cap
+      let current = parsed;
+      const visited = new Set();
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), JD_FETCH_TIMEOUT_MS);
+      try {
+        for (let i = 0; i < 5; i++) {
+          if (visited.has(current.toString())) return sendJSON(res, 400, { error: 'Redirect loop detected.' });
+          visited.add(current.toString());
+          const r = await fetch(current, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; JobSeekerToolkit/0.1; +https://example.local)' }, signal: ctrl.signal });
+          if ([301,302,303,307,308].includes(r.status)) {
+            const loc = r.headers.get('location');
+            if (!loc) return sendJSON(res, 400, { error: 'Redirect without location.' });
+            current = new NodeURL(loc, current);
+            if (current.protocol !== 'https:') return sendJSON(res, 400, { error: 'Redirected to non-HTTPS URL.' });
+            continue;
+          }
+          if (!r.ok) return sendJSON(res, 400, { error: `Fetch failed (${r.status}).` });
+          const ctype = String(r.headers.get('content-type') || '').toLowerCase();
+          const allowed = ctype.includes('text/html') || ctype.includes('application/ld+json');
+          if (!allowed) return sendJSON(res, 415, { error: 'Unsupported content type.' });
+
+          const reader = r.body?.getReader ? r.body.getReader() : null;
+          let buf = new Uint8Array(0);
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) {
+                const n = new Uint8Array(buf.length + value.length);
+                n.set(buf); n.set(value, buf.length); buf = n;
+                if (buf.length > JD_MAX_BYTES) { clearTimeout(to); return sendJSON(res, 413, { error: 'Response too large.' }); }
+              }
+            }
+          } else {
+            const ab = await r.arrayBuffer();
+            if (ab.byteLength > JD_MAX_BYTES) { clearTimeout(to); return sendJSON(res, 413, { error: 'Response too large.' }); }
+            buf = new Uint8Array(ab);
+          }
+          clearTimeout(to);
+          const html = Buffer.from(buf).toString('utf8');
+          const { text, source } = extractJD(html, current.toString());
+          const cleaned = String(text || '').trim();
+          if (!cleaned || cleaned.length < 50) {
+            return sendJSON(res, 422, { error: 'No extractable text found. Paste the job description text instead.', warnings: ['Empty or near-empty page'] });
+          }
+          return sendJSON(res, 200, { text: cleaned, source, host: current.host, warnings: [] });
+        }
+        return sendJSON(res, 400, { error: 'Too many redirects.' });
+      } catch (e) {
+        const msg = e?.name === 'AbortError' ? 'Timeout while fetching URL.' : 'Failed to fetch URL.';
+        return sendJSON(res, e?.name === 'AbortError' ? 504 : 400, { error: msg });
       }
     }
 

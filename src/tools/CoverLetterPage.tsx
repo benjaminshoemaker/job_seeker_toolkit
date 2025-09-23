@@ -87,6 +87,14 @@ type ResumeMode = 'choice' | 'upload' | 'paste' | 'editor';
 export default function CoverLetterPage() {
   const [resume, setResume] = useState("");
   const [jd, setJd] = useState("");
+  type JdMode = 'choice' | 'url' | 'editor';
+  const [jdMode, setJdMode] = useState<JdMode>('choice');
+  const [jdExtracted, setJdExtracted] = useState("");
+  const [jdEdited, setJdEdited] = useState(false);
+  const [jdBannerHost, setJdBannerHost] = useState<string | null>(null);
+  const [jdImporting, setJdImporting] = useState(false);
+  const [jdUrl, setJdUrl] = useState("");
+  const [jdError, setJdError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [letter, setLetter] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -219,6 +227,57 @@ export default function CoverLetterPage() {
     setResume(val);
     setEdited(val !== extracted);
   }, [extracted]);
+
+  
+
+  // JD helpers
+  const onJdChange = useCallback((val: string) => {
+    if (val.length > MAX_INPUT) {
+      toast.error("JD exceeds 10k characters.");
+      return;
+    }
+    setJd(val);
+    setJdEdited(val !== jdExtracted);
+  }, [jdExtracted]);
+
+  const importJdFromUrl = useCallback(async () => {
+    const url = jdUrl.trim();
+    if (!url) { toast.error('Enter a URL.'); return; }
+    // Confirm replacement if edited
+    if (jdEdited && !confirm('Replace the current JD text with the imported content?')) {
+      return;
+    }
+    setJdImporting(true);
+    setJdError(null);
+    try {
+      const res = await fetch('/api/jd-from-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Import failed');
+      const text = String(data?.text || '');
+      const host = String(data?.host || '');
+      setJd(text);
+      setJdExtracted(text);
+      setJdEdited(false);
+      setJdBannerHost(host || null);
+      setJdMode('editor');
+    } catch (e: any) {
+      const msg = 'We couldn’t import this page. Paste the job description text instead.';
+      toast.error(msg);
+      setJdError(msg);
+    } finally {
+      setJdImporting(false);
+    }
+  }, [jdUrl, jdEdited]);
+
+  const onClearJd = useCallback(() => {
+    if (!jd.trim() || confirm('Clear the JD editor?')) {
+      setJd('');
+      setJdEdited(false);
+      setJdExtracted('');
+      setJdBannerHost(null);
+      setJdMode('choice');
+    }
+  }, [jd]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -360,21 +419,87 @@ export default function CoverLetterPage() {
 
             <div>
               <label className="block text-sm font-medium mb-2">Job Description (JD)</label>
-              <Textarea
-                value={jd}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.length > MAX_INPUT) {
-                    toast.error("JD exceeds 10k characters.");
-                    return;
-                  }
-                  setJd(val);
-                }}
-                rows={10}
-                placeholder="Paste the job description..."
-              />
-              <div className="text-xs text-muted-foreground mt-1">{jd.length}/{MAX_INPUT}</div>
+              {jdMode === 'choice' && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-3">Choose how to provide the job description.</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      className="rounded-md border p-4 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setJdMode('url')}
+                      aria-label="Import from URL"
+                    >
+                      <div className="font-medium">Import from URL</div>
+                      <div className="text-xs text-muted-foreground mt-1">Paste a public job post URL. You can edit the imported text.</div>
+                    </button>
+                    <button
+                      className="rounded-md border p-4 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => { setJdMode('editor'); setJdBannerHost(null); setJdExtracted(jd); setJdEdited(false); }}
+                      aria-label="Paste job description text"
+                    >
+                      <div className="font-medium">Paste job description text</div>
+                      <div className="text-xs text-muted-foreground mt-1">Paste the JD and edit directly.</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {jdMode === 'url' && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      className="border rounded-md px-3 py-2 w-full text-sm bg-input-background"
+                      placeholder="https://example.com/jobs/..."
+                      value={jdUrl}
+                      onChange={(e) => setJdUrl(e.target.value)}
+                      disabled={jdImporting}
+                      aria-label="Job post URL"
+                    />
+                    <Button size="sm" onClick={importJdFromUrl} disabled={jdImporting}>{jdImporting ? 'Importing…' : 'Import'}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setJdMode('choice')}>Back</Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Paste a public job post URL. You can edit the imported text.</div>
+                  {jdImporting && (
+                    <div className="text-xs text-muted-foreground">Fetching and extracting content…</div>
+                  )}
+                  {jdError && (
+                    <div className="text-xs text-destructive" aria-live="polite">{jdError}</div>
+                  )}
+                </div>
+              )}
+
+              {jdMode === 'editor' && (
+                <div className="space-y-2">
+                  {/* Back button only for paste path (no banner host) */}
+                  {!jdBannerHost && (
+                    <div className="flex items-center justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => setJdMode('choice')}>
+                        <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                      </Button>
+                    </div>
+                  )}
+                  {jdBannerHost && (
+                    <div className="text-xs bg-muted rounded p-2">Imported from {jdBannerHost}. Review and edit before generating.</div>
+                  )}
+                  <Textarea
+                    value={jd}
+                    onChange={(e) => onJdChange(e.target.value)}
+                    rows={10}
+                    placeholder="Paste the job description..."
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">{jd.length}/{MAX_INPUT}</div>
+                  {/* Actions only when content came from import */}
+                  {jdBannerHost && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setJdMode('url')}>Replace with new import</Button>
+                      <Button variant="ghost" size="sm" onClick={onClearJd}>Clear editor</Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            
 
             <div className="flex items-center gap-3">
               <Button onClick={onGenerate} disabled={loading}>

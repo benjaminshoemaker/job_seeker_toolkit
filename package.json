@@ -48,7 +48,10 @@
           "vaul": "^1.1.2",
           "busboy": "^1.6.0",
           "pdf-parse": "^1.1.1",
-          "mammoth": "^1.8.0"
+          "mammoth": "^1.8.0",
+          "cheerio": "^1.0.0-rc.12",
+          "@mozilla/readability": "^0.5.0",
+          "jsdom": "^25.0.1"
       },
       "devDependencies": {
           "@types/node": "^20.10.0",
