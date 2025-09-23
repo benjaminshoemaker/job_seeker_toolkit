@@ -286,15 +286,7 @@ export default function CoverLetterPageV2() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
-      <header className="border-b bg-card">
-        <div ref={headerRef} className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/")}> 
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-          <FileText className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-semibold">Cover Letter Generator</h1>
-        </div>
-      </header>
+      {/* Removed duplicate header to avoid duplication with embedded component/header */}
 
       {/* Preferred: render Figma UI if present */}
       <main ref={mainRef} className="max-w-7xl mx-auto px-4 py-6">
