@@ -95,3 +95,6 @@ Tests included:
 
   Run `npm run dev` to start the development server.
   
+## Contributing
+
+Contributions are welcome! See CONTRIBUTING.md for guidelines, local setup, and how to file issues/PRs.

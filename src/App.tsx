@@ -72,9 +72,9 @@ const tools: Tool[] = [
   },
   {
     id: "resume-builder",
-    title: "Resume Builder",
-    description: "Build and customize professional resumes with industry-specific templates.",
-    detailedDescription: "Professional resume builders help you create ATS-friendly resumes that pass through automated screening systems and impress hiring managers.",
+    title: "Resume Editor",
+    description: "Gives you tailored feedback on your resume and LinkedIn profile.",
+    detailedDescription: "Resume builders help you create ATS-friendly resumes that pass through automated screening systems and impress hiring managers.",
     icon: <FileText className="w-5 h-5" />,
     badge: "External",
     category: "Application Tools",
@@ -89,24 +89,6 @@ const tools: Tool[] = [
         pros: ["ATS optimization", "Real-time feedback", "Industry-specific tips"],
         cons: ["Limited free version", "Can be overwhelming for beginners"],
         pricing: "Free tier available, Pro plans from $19/month"
-      },
-      {
-        name: "Resume.io",
-        description: "Professional templates with easy drag-and-drop interface.",
-        href: "https://resume.io",
-        rating: 4.5,
-        pros: ["Beautiful templates", "User-friendly interface", "Good customization"],
-        cons: ["Limited free options", "Templates can look similar"],
-        pricing: "Free trial, plans from $2.95/month"
-      },
-      {
-        name: "Canva Resume Builder",
-        description: "Creative resume designs with extensive customization options.",
-        href: "https://canva.com/resumes",
-        rating: 4.3,
-        pros: ["Creative designs", "Extensive customization", "Free options available"],
-        cons: ["May not be ATS-friendly", "Can be too creative for some industries"],
-        pricing: "Free tier available, Pro from $14.99/month"
       }
     ]
   },
@@ -117,7 +99,7 @@ const tools: Tool[] = [
     detailedDescription: "Comprehensive offer analysis tool that evaluates total compensation, benefits packages, and provides data-driven negotiation strategies.",
     icon: <DollarSign className="w-5 h-5" />,
     badge: "Internal",
-    category: "Application Tools",
+    category: "Salary & Negotiation",
     comingSoon: true,
     aiSummary: "Offer evaluation goes beyond salary - it's about understanding total compensation value, growth potential, and negotiation leverage. Our tool will provide market comparisons and negotiation scripts."
   },
@@ -134,110 +116,10 @@ const tools: Tool[] = [
     comingSoon: true,
     aiSummary: "Effective interview prep requires both technical knowledge and communication skills. Our assistant will provide industry-specific questions, behavioral scenarios, and real-time feedback to build confidence."
   },
-  {
-    id: "pramp",
-    title: "Pramp",
-    description: "Practice technical interviews with peers in a collaborative environment.",
-    detailedDescription: "Peer-to-peer interview practice platform connecting you with other professionals for mock technical interviews.",
-    icon: <Users className="w-5 h-5" />,
-    badge: "External",
-    category: "Interview Prep",
-    href: "https://pramp.com",
-    aiSummary: "Peer interview practice offers realistic experience and diverse perspectives. These platforms are particularly valuable for technical roles where problem-solving collaboration is key.",
-    options: [
-      {
-        name: "Pramp",
-        description: "Free peer-to-peer technical interview practice with real-time collaboration.",
-        href: "https://pramp.com",
-        rating: 4.6,
-        pros: ["Completely free", "Real peer interaction", "Good for technical interviews"],
-        cons: ["Quality depends on peers", "Limited behavioral questions", "Scheduling can be challenging"],
-        pricing: "Completely free"
-      },
-      {
-        name: "InterviewBit",
-        description: "Comprehensive coding interview preparation with peer practice options.",
-        href: "https://interviewbit.com",
-        rating: 4.4,
-        pros: ["Structured curriculum", "Company-specific prep", "Large question bank"],
-        cons: ["Can be overwhelming", "Interface feels dated", "Less focus on soft skills"],
-        pricing: "Free tier available, Premium from $99/year"
-      }
-    ]
-  },
-  {
-    id: "leetcode",
-    title: "LeetCode",
-    description: "Practice coding problems and algorithms for technical interviews.",
-    detailedDescription: "The leading platform for coding interview preparation with thousands of problems used by top tech companies.",
-    icon: <Target className="w-5 h-5" />,
-    badge: "External",
-    category: "Interview Prep",
-    href: "https://leetcode.com",
-    aiSummary: "Coding practice platforms are essential for technical interviews. Focus on understanding patterns rather than memorizing solutions, and practice consistently over time.",
-    options: [
-      {
-        name: "LeetCode",
-        description: "Industry standard for coding interview preparation with company-specific question sets.",
-        href: "https://leetcode.com",
-        rating: 4.7,
-        pros: ["Industry standard", "Company-specific questions", "Great community discussions"],
-        cons: ["Can be intimidating for beginners", "Premium features are expensive", "Less guidance on approach"],
-        pricing: "Free tier available, Premium from $35/month"
-      },
-      {
-        name: "HackerRank",
-        description: "Coding challenges with detailed explanations and multiple programming languages.",
-        href: "https://hackerrank.com",
-        rating: 4.3,
-        pros: ["Good for beginners", "Multiple languages", "Clear explanations"],
-        cons: ["Less focused on interviews", "Interface can be slow", "Limited advanced problems"],
-        pricing: "Free for individuals"
-      },
-      {
-        name: "CodeSignal",
-        description: "Technical assessment platform with realistic coding environments.",
-        href: "https://codesignal.com",
-        rating: 4.2,
-        pros: ["Realistic environments", "Good for assessment prep", "AI-powered insights"],
-        cons: ["Smaller question bank", "Less community support", "More expensive"],
-        pricing: "Free tier available, Pro from $99/month"
-      }
-    ]
-  },
+
+
 
   // Salary & Negotiation
-  {
-    id: "salary-research",
-    title: "Glassdoor Salary Insights",
-    description: "Research salary ranges and company reviews from current and former employees.",
-    detailedDescription: "Comprehensive salary and company research platform with verified employee reviews and compensation data.",
-    icon: <TrendingUp className="w-5 h-5" />,
-    badge: "External",
-    category: "Salary & Negotiation",
-    href: "https://glassdoor.com",
-    aiSummary: "Salary research tools provide crucial market context for negotiations. Cross-reference multiple sources and consider location, experience level, and company size for accurate comparisons.",
-    options: [
-      {
-        name: "Glassdoor",
-        description: "Employee reviews, salary insights, and company culture information.",
-        href: "https://glassdoor.com",
-        rating: 4.4,
-        pros: ["Large database", "Anonymous reviews", "Company insights"],
-        cons: ["Self-reported data can be biased", "Requires account creation", "Limited details for smaller companies"],
-        pricing: "Free with account"
-      },
-      {
-        name: "PayScale",
-        description: "Detailed salary reports with personalized compensation analysis.",
-        href: "https://payscale.com",
-        rating: 4.2,
-        pros: ["Detailed salary reports", "Skills-based insights", "Good for market research"],
-        cons: ["Requires detailed profile", "Can be slow to use", "Limited free features"],
-        pricing: "Free basic reports, detailed reports from $99"
-      }
-    ]
-  },
   {
     id: "levels-fyi",
     title: "Levels.fyi",
@@ -270,81 +152,9 @@ const tools: Tool[] = [
     ]
   },
 
-  // Career Development
-  {
-    id: "linkedin-learning",
-    title: "LinkedIn Learning",
-    description: "Develop new skills with thousands of courses on business, technology, and creative topics.",
-    detailedDescription: "Professional development platform with courses designed for career advancement and skill building in today's job market.",
-    icon: <BookOpen className="w-5 h-5" />,
-    badge: "External",
-    category: "Career Development",
-    href: "https://linkedin.com/learning",
-    aiSummary: "Online learning platforms are crucial for staying competitive. Focus on skills that complement your current role and emerging industry trends.",
-    options: [
-      {
-        name: "LinkedIn Learning",
-        description: "Professional courses with certificates that integrate with your LinkedIn profile.",
-        href: "https://linkedin.com/learning",
-        rating: 4.5,
-        pros: ["LinkedIn integration", "Professional focus", "High-quality instructors"],
-        cons: ["Subscription required", "Limited hands-on practice", "Can be expensive"],
-        pricing: "$29.99/month or $239.88/year"
-      },
-      {
-        name: "Coursera",
-        description: "University-level courses and professional certificates from top institutions.",
-        href: "https://coursera.org",
-        rating: 4.6,
-        pros: ["University partnerships", "Financial aid available", "Comprehensive programs"],
-        cons: ["Some courses are expensive", "Time-intensive", "Varying quality"],
-        pricing: "Free courses available, Specializations from $39-79/month"
-      },
-      {
-        name: "Udemy",
-        description: "Practical skills courses with lifetime access and frequent sales.",
-        href: "https://udemy.com",
-        rating: 4.3,
-        pros: ["Lifetime access", "Practical focus", "Frequent sales"],
-        cons: ["Quality varies widely", "No accreditation", "Can be overwhelming choice"],
-        pricing: "Individual courses $10-200, frequent sales"
-      }
-    ]
-  },
-  {
-    id: "coursera",
-    title: "Coursera",
-    description: "Take courses from top universities and companies to advance your career.",
-    detailedDescription: "Academic and professional courses from leading universities and companies, offering certificates and degree programs.",
-    icon: <Award className="w-5 h-5" />,
-    badge: "External",
-    category: "Career Development",
-    href: "https://coursera.org",
-    aiSummary: "University-level learning platforms provide credible credentials and structured learning paths. Best for comprehensive skill development and career transitions.",
-    options: [
-      {
-        name: "Coursera",
-        description: "University courses and professional certificates with academic rigor.",
-        href: "https://coursera.org",
-        rating: 4.6,
-        pros: ["University partnerships", "Comprehensive programs", "Financial aid available"],
-        cons: ["Can be time-intensive", "Academic pace", "Subscription model"],
-        pricing: "Free courses available, Specializations from $39-79/month"
-      },
-      {
-        name: "edX",
-        description: "University-level courses with verified certificates and degree programs.",
-        href: "https://edx.org",
-        rating: 4.4,
-        pros: ["Free audit options", "University quality", "MicroMasters programs"],
-        cons: ["Academic focus", "Less career-oriented", "Limited interaction"],
-        pricing: "Free audit, Verified certificates from $50-300"
-      }
-    ]
-  }
 ];
 
-const categories = ["Application Tools", "Interview Prep", "Salary & Negotiation", "Career Development"];
+const categories = ["Application Tools", "Interview Prep", "Salary & Negotiation"];
 
 export default function App() {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
@@ -371,7 +181,7 @@ export default function App() {
   };
 
   const handleContributeClick = (type: string) => {
-    const baseUrl = "https://github.com/jobseekertoolkit/toolkit";
+    const baseUrl = "https://github.com/benjaminshoemaker/job_seeker_toolkit";
     
     switch (type) {
       case 'bug':
@@ -381,7 +191,7 @@ export default function App() {
         window.open(`${baseUrl}/issues/new?template=feature_request.md`, '_blank');
         break;
       case 'edit':
-        window.open(`${baseUrl}/edit/main/App.tsx`, '_blank');
+        window.open(`${baseUrl}/edit/main/src/App.tsx`, '_blank');
         break;
       case 'roadmap':
         window.open(`${baseUrl}/projects/1`, '_blank');
@@ -471,15 +281,15 @@ export default function App() {
             Accelerate Your Job Search
           </h2>
           <p className="text-lg text-muted-foreground mb-6">
-            Discover powerful tools and resources to help you land your dream job. From crafting perfect applications to acing interviews and negotiating offers.
+            Tools that I've built or used myself for the job search process. No paywalls or fluff. 
           </p>
           <div className="bg-muted/50 p-4 rounded-lg mb-8 text-sm">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <Github className="w-4 h-4" />
-              <span className="font-medium">Community-Powered & Open Source</span>
+              <span className="font-medium">Open for contributions</span>
             </div>
             <p className="text-muted-foreground">
-              This toolkit is built by the community, for the community. All internal tools, recommendations, and the platform itself are open source and accepting contributions.
+              I built some simple utilities for the parts of the search that shouldn’t be hard or costly. Contributions welcome but optional.
             </p>
           </div>
           <div className="flex justify-center space-x-4">
@@ -514,7 +324,7 @@ export default function App() {
                 .map((tool) => (
                   <Card 
                     key={tool.id} 
-                    className={`transition-all duration-200 ${
+                    className={`transition-all duration-200 flex flex-col h-full ${
                       tool.comingSoon 
                         ? 'opacity-75 cursor-not-allowed' 
                         : 'hover:shadow-md cursor-pointer hover:border-primary/20'
@@ -546,15 +356,15 @@ export default function App() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                      <CardDescription className="text-sm leading-relaxed mb-4">
+                    <CardContent className="pt-0 flex flex-col flex-1">
+                      <CardDescription className="text-sm leading-relaxed mb-4 flex-1">
                         {tool.description}
                       </CardDescription>
                       
                       <Button 
                         variant={tool.comingSoon ? "secondary" : "default"} 
                         size="sm" 
-                        className="w-full"
+                        className="w-full mt-auto"
                         disabled={tool.comingSoon}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -733,13 +543,13 @@ export default function App() {
                   View roadmap
                 </button>
                 <button 
-                  onClick={() => window.open('https://github.com/jobseekertoolkit/toolkit/discussions', '_blank')}
+                  onClick={() => window.open('https://github.com/benjaminshoemaker/job_seeker_toolkit/discussions', '_blank')}
                   className="block text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Join discussions
                 </button>
                 <button 
-                  onClick={() => window.open('https://github.com/jobseekertoolkit/toolkit', '_blank')}
+                  onClick={() => window.open('https://github.com/benjaminshoemaker/job_seeker_toolkit', '_blank')}
                   className="block text-muted-foreground hover:text-foreground transition-colors"
                 >
                   GitHub repository
