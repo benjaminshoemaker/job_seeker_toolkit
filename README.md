@@ -78,6 +78,11 @@ Tests included:
   - Size limit: ≤ 5 MB.
   - OCR is not supported. Scanned/image-only PDFs will return a warning: "We couldn’t read this file because it’s a scanned PDF. OCR isn’t supported yet. Please paste your resume text instead."
   - Privacy/security: Files are processed in-memory only, never persisted, never sent to third parties. Temporary buffers are discarded after response.
+- Job Description import endpoint: `POST /api/jd-from-url`
+  - Body: `{ url: string }`, HTTPS only, strict SSRF protections (blocks localhost/private IPs).
+  - Follows ≤5 redirects, 3 MB response cap, 10 s timeout, allowlist content-types (text/html, application/ld+json).
+  - Strategy pipeline: JSON-LD (schema.org JobPosting) → Readability → Heuristics. Returns `{ text, source, host, warnings }`.
+  - Server-side fetch only; returns plain text. No content persisted.
 - One provider only: OpenAI for cover letter generation. No embeddings, analytics, or batch calls.
 - p95 latency target ≤ 8s locally on small inputs.
 - Using Responses API: the server passes `instructions` (system) and a plain string `input` (user), and requests text with `response_format: { type: 'text' }` and `modalities: ['text']` when supported. It adapts parameters (max_output_tokens → max_tokens → max_completion_tokens), drops `temperature` when unsupported, and removes `response_format`/`modalities` if a model rejects them.
