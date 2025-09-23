@@ -9,15 +9,6 @@ import { Loader2, Clipboard, ArrowLeft, FileText } from "lucide-react";
 const MAX_INPUT = 10_000;
 const MODEL_TIMEOUT_MS = 20_000;
 
-// Helper: split text into reasonably sized sentences
-function splitSentences(text: string): string[] {
-  return text
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 // Ensure exactly three paragraphs; balance by words
 function ensureThreeParagraphs(text: string): string {
   const trimmed = text.trim();
@@ -35,70 +26,7 @@ function ensureThreeParagraphs(text: string): string {
   return [p1, p2, p3].filter((p) => p.trim().length).join("\n\n");
 }
 
-// Prompt assembly (one provider)
-function buildSystemPrompt(): string {
-  return (
-    "You write professional cover letters using only the supplied resume and job description. " +
-    "Do not invent facts. Body text only. No headers or contact blocks."
-  );
-}
-
-function buildUserPrompt(resume: string, jd: string): string {
-  return `Goal: Draft a professional cover letter in three concise paragraphs (~220 words).
-Constraints:
-- Use only information that is present or directly implied by the resume and job description.
-- Do not add personal contact blocks, dates, or salutations beyond a standard closing.
-- Keep tone professional and specific to the role and company.
-
-Resume:
-${resume}
-
-Job description:
-${jd}
-
-Output: Only the cover letter body text, three paragraphs.`;
-}
-
-// Single local provider (mock) to respect offline constraint
-async function mockLLM(system: string, user: string, signal?: AbortSignal, delayMs?: number): Promise<string> {
-  void system;
-  // Extract resume and jd from user prompt for simple synthesis
-  const resume = /Resume:\n([\s\S]*?)\n\nJob description:/m.exec(user)?.[1] ?? "";
-  const jd = /Job description:\n([\s\S]*)$/m.exec(user)?.[1] ?? "";
-
-  const rLines = resume.split(/\n+/).map((s) => s.trim()).filter(Boolean);
-  const jLines = jd.split(/\n+/).map((s) => s.trim()).filter(Boolean);
-
-  const roleHint = jLines.find((l) => /engineer|manager|designer|analyst|developer|marketing|sales|product/i.test(l)) || "this role";
-  const companyHint = jLines.find((l) => /at\s+([A-Z][A-Za-z0-9&.\- ]+)/.test(l)) || "your team";
-
-  const pick = (arr: string[], i: number) => (arr.length ? arr[i % arr.length] : "");
-
-  const intro = [
-    `I am interested in ${roleHint} and offer relevant experience drawn from my background, including ${pick(rLines, 0)}.`,
-    `Your description emphasizes ${pick(jLines, 0)}; my work has focused on similar priorities and outcomes.`,
-  ].join(" ");
-
-  const middle = [
-    rLines.slice(1, 3).map((r) => `Previously, ${r}.`).join(" ") || "I have a record of delivering results in comparable settings.",
-    jLines.slice(1, 3).map((j) => `This aligns with requirements such as ${j}.`).join(" ") || "The role’s expectations match my strengths in execution and collaboration.",
-  ].join(" ");
-
-  const closing = [
-    `I am motivated by the opportunity to contribute to ${companyHint} and would welcome the chance to discuss how my experience fits your needs.`,
-    "Thank you for your time and consideration.",
-  ].join(" ");
-
-  const raw = [intro, middle, closing].join("\n\n");
-
-  await new Promise((res, rej) => {
-    const ms = Math.max(0, Math.min(delayMs ?? 250, 8000));
-    const id = setTimeout(res, ms);
-    signal?.addEventListener("abort", () => { clearTimeout(id); rej(new DOMException("Aborted", "AbortError")); });
-  });
-
-  return raw;
-}
+// No mock provider in production; tests can mock fetch('/api/cover-letter/generate')
 
 // Parse sentences with citations: returns validated list and reconstructed paragraphs
 function parseAndValidateCitations(
@@ -184,21 +112,32 @@ export default function CoverLetterPage() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    const system = buildSystemPrompt();
-    const user = buildUserPrompt(resume, jd);
-
     try {
       const raw = await Promise.race([
-        mockLLM(system, user, ctrl.signal, delayParam),
-        new Promise<string>((_, rej) => setTimeout(() => rej(new Error("timeout")), MODEL_TIMEOUT_MS)),
+        (async () => {
+          const res = await fetch('/api/cover-letter/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume, jd }),
+            signal: ctrl.signal,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || 'Generation failed');
+          return String(data.letter || '');
+        })(),
+        new Promise<string>((_, rej) => setTimeout(() => rej(new Error('timeout')), MODEL_TIMEOUT_MS)),
       ]);
       const normalized = ensureThreeParagraphs(raw.trim());
+      if (!normalized) {
+        toast.error("The model returned an empty letter. Please try again.");
+      }
       setLetter(normalized);
     } catch (e: any) {
       if (e?.message === "timeout") {
         toast.error("Model request timed out. Please retry.");
       } else if (e?.name !== "AbortError") {
-        toast.error("Failed to generate. Please try again.");
+        const msg = typeof e?.message === 'string' && e.message ? e.message : 'Failed to generate. Please try again.';
+        toast.error(msg);
       }
     } finally {
       setLoading(false);
