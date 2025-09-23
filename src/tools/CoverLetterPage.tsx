@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
@@ -29,58 +30,7 @@ function ensureThreeParagraphs(text: string): string {
 
 // No mock provider in production; tests can mock fetch('/api/cover-letter/generate')
 
-// Parse sentences with citations: returns validated list and reconstructed paragraphs
-function parseAndValidateCitations(
-  text: string,
-  rMax: number,
-  jMax: number
-): { paragraphs: Sentence[][]; warnings: string[] } {
-  const warnings: string[] = [];
-  const paragraphs: Sentence[][] = [];
-  if (!text.trim()) return { paragraphs, warnings };
-
-  const paraBlocks = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  // claim (citations) with optional trailing punctuation after citations
-  const sentenceRegex = /(.*?)(?:\s*\(([^)]*)\)\s*[.!?]?)\s*(?=\s|$)/g;
-
-  for (const block of paraBlocks) {
-    const group: Sentence[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = sentenceRegex.exec(block)) !== null) {
-      const claim = match[1].trim();
-      const tag = (match[2] || "").trim();
-      const citation: Citation = { r: [], j: [] };
-
-      // Extract R# and J# indices
-      const rMatch = /R#:\s*([0-9,\s]+)/i.exec(tag);
-      const jMatch = /J#:\s*([0-9,\s]+)/i.exec(tag);
-      if (rMatch) {
-        citation.r = rMatch[1]
-          .split(/[,\s]+/)
-          .map((n) => parseInt(n, 10))
-          .filter((n) => Number.isFinite(n) && n >= 1 && n <= rMax);
-      }
-      if (jMatch) {
-        citation.j = jMatch[1]
-          .split(/[,\s]+/)
-          .map((n) => parseInt(n, 10))
-          .filter((n) => Number.isFinite(n) && n >= 1 && n <= jMax);
-      }
-
-      const valid = (citation.r.length + citation.j.length) >= 1;
-      if (claim && valid) {
-        group.push({ claim, citation });
-      }
-    }
-    if (group.length) paragraphs.push(group);
-  }
-
-  if (!paragraphs.length) {
-    warnings.push("No valid sentences with citations were found.");
-  }
-
-  return { paragraphs, warnings };
-}
+// (removed unused citation parsing helper)
 
 type ResumeMode = 'choice' | 'upload' | 'paste' | 'editor';
 
