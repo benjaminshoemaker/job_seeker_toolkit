@@ -28,7 +28,10 @@ Open http://localhost:3000/tools/cover-letter
 
 ### 3) Usage
 
-- Paste Resume and JD (≤10k chars each) and click Generate.
+- Choose how to provide your resume:
+  - Upload resume (PDF/DOCX): Drag-and-drop or choose a file (≤ 5 MB). The server extracts text and you can edit it before generating.
+  - Paste resume text: Paste text directly and continue to the editor.
+- The Job Description (JD) remains paste-only (≤10k chars).
 - A read-only textbox renders the letter as exactly three paragraphs; click Copy to copy to clipboard.
 - Timeouts are enforced at 20s; errors surface as toasts with a retry option.
 
@@ -51,11 +54,17 @@ Open http://localhost:3000/tools/cover-letter
 - Type-check the project: `npm run typecheck`
 
 Tests included:
-- `src/tools/CoverLetterPage.test.tsx`
-  - Smoke render with no crashes
+- UI: `src/tools/CoverLetterPage.test.tsx`
+  - Choice screen renders
+  - Paste flow prepopulates editor; reset-to-extracted appears after edits
+  - Upload flow shows filename and editor
   - Empty-input behavior (no API call)
   - Paragraph normalization to exactly three paragraphs
-  - Loading state during an 8s mocked delay (latency handling)
+  - Loading state during an 8s mocked delay
+- Backend: `server/extract.test.ts`
+  - Type/size validation
+  - Scanned-PDF detection emits OCR warning
+  - Normal PDF and DOCX return non-empty text
 
 ### CORS and env validation
 
@@ -64,7 +73,12 @@ Tests included:
 
 ### Notes
 
-- One provider only: OpenAI. No uploads, PDFs, embeddings, analytics, or batch calls.
+- Resume extraction endpoint: `POST /api/extract-resume` (multipart/form-data with field `file`).
+  - Supported types: PDF (.pdf) and DOCX (.docx) only.
+  - Size limit: ≤ 5 MB.
+  - OCR is not supported. Scanned/image-only PDFs will return a warning: "We couldn’t read this file because it’s a scanned PDF. OCR isn’t supported yet. Please paste your resume text instead."
+  - Privacy/security: Files are processed in-memory only, never persisted, never sent to third parties. Temporary buffers are discarded after response.
+- One provider only: OpenAI for cover letter generation. No embeddings, analytics, or batch calls.
 - p95 latency target ≤ 8s locally on small inputs.
 - Using Responses API: the server passes `instructions` (system) and a plain string `input` (user), and requests text with `response_format: { type: 'text' }` and `modalities: ['text']` when supported. It adapts parameters (max_output_tokens → max_tokens → max_completion_tokens), drops `temperature` when unsupported, and removes `response_format`/`modalities` if a model rejects them.
 

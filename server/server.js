@@ -4,6 +4,8 @@
 import { createServer } from 'node:http';
 import { readFileSync, statSync, createReadStream, existsSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
+import { extractResumeFromBuffer, OCR_WARNING, isPDF, isDOCX } from './extract.js';
+import Busboy from 'busboy';
 
 const PORT = Number(process.env.PORT || 8787);
 const BUILD_DIR = resolve(process.cwd(), 'build');
@@ -30,6 +32,7 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 
 const MAX_INPUT = 10_000;
 const MODEL_TIMEOUT_MS = 20_000;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -71,6 +74,40 @@ function parseBody(req) {
       }
     });
     req.on('error', reject);
+  });
+}
+
+function parseMultipart(req) {
+  return new Promise((resolve, reject) => {
+    try {
+      const bb = Busboy({ headers: req.headers, limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
+      let resolved = false;
+      bb.on('file', (name, file, info) => {
+        if (name !== 'file') { file.resume(); return; }
+        const { filename, mimeType } = info;
+        const chunks = [];
+        let total = 0;
+        file.on('data', (d) => {
+          total += d.length;
+          chunks.push(d);
+        });
+        file.on('limit', () => {
+          if (!resolved) { resolved = true; reject(new Error('File too large')); }
+          try { file.resume(); } catch {}
+        });
+        file.on('end', () => {
+          if (resolved) return;
+          const buffer = Buffer.concat(chunks);
+          resolved = true;
+          resolve({ file: { filename, contentType: mimeType, buffer, size: buffer.length } });
+        });
+      });
+      bb.on('error', (e) => { if (!resolved) { resolved = true; reject(e); } });
+      bb.on('finish', () => { if (!resolved) reject(new Error('No file uploaded.')); });
+      req.pipe(bb);
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
@@ -268,6 +305,39 @@ const server = createServer(async (req, res) => {
         clearTimeout(timeout);
         const msg = e?.name === 'AbortError' ? 'Provider timeout' : (e?.message || 'Generation failed');
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 500, { error: msg });
+      }
+    }
+
+    if (req.url === '/api/extract-resume' && req.method === 'POST') {
+      // multipart/form-data with single file "file"
+      try {
+        const { file } = await parseMultipart(req);
+        const { filename, contentType, buffer, size } = file || {};
+        if (!buffer || !size) return sendJSON(res, 400, { error: 'No file uploaded.' });
+        if (size > MAX_UPLOAD_BYTES) return sendJSON(res, 413, { error: 'File too large (max 5 MB).' });
+        const allowed = isPDF(filename, contentType) || isDOCX(filename, contentType);
+        if (!allowed) return sendJSON(res, 400, { error: 'Unsupported file type. Only PDF and DOCX are allowed.' });
+
+        // Extract
+        const t0 = Date.now();
+        const { text, warnings, meta } = await extractResumeFromBuffer(buffer, filename, contentType);
+        const elapsed = Date.now() - t0;
+        const trimmed = String(text || '').trim();
+        const out = {
+          text: trimmed,
+          warnings: Array.isArray(warnings) ? warnings : [],
+          meta: { ...(meta || {}), chars: trimmed.length },
+        };
+        // Empty extraction case
+        if (!trimmed) {
+          if (isPDF(filename, contentType)) {
+            if (!out.warnings.includes(OCR_WARNING)) out.warnings.push(OCR_WARNING);
+          }
+        }
+        return sendJSON(res, 200, out);
+      } catch (e) {
+        const msg = /too large/i.test(String(e?.message || '')) ? 'File too large (max 5 MB).' : 'Extraction failed. The file may be corrupted.';
+        return sendJSON(res, /too large/i.test(String(e?.message || '')) ? 413 : 400, { error: msg });
       }
     }
 

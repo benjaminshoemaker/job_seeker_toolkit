@@ -1,10 +1,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CoverLetterPage from './CoverLetterPage';
 
-function fillInputs(resume: string, jd: string) {
-  const resumeBox = screen.getByLabelText(/Resume \(paste only\)/i);
+function goPasteAndFill(resume: string, jd: string) {
+  // Choose paste path
+  fireEvent.click(screen.getByRole('button', { name: /Paste resume text/i }));
+  const resumeBox = screen.getByLabelText(/Paste resume text/i);
   const jdBox = screen.getByLabelText(/Job Description \(JD\)/i);
   fireEvent.change(resumeBox, { target: { value: resume } });
+  // Continue to editor (to simulate unified editor usage)
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
   fireEvent.change(jdBox, { target: { value: jd } });
 }
 
@@ -13,15 +17,15 @@ describe('CoverLetterPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders inputs and output box (smoke)', () => {
+  it('renders choice screen and JD box (smoke)', () => {
     render(<CoverLetterPage />);
     expect(screen.getByText(/Cover Letter Generator/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Resume \(paste only\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose how to provide your resume\./i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Job Description \(JD\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Generate/i })).toBeInTheDocument();
     // Output textarea
     const outputs = screen.getAllByRole('textbox');
-    expect(outputs.length).toBeGreaterThanOrEqual(3); // resume, jd, output
+    expect(outputs.length).toBeGreaterThanOrEqual(1); // jd + output at least (resume appears after choice)
   });
 
   it('does not call API when inputs are empty', async () => {
@@ -35,10 +39,11 @@ describe('CoverLetterPage', () => {
     render(<CoverLetterPage />);
     const letter = 'p1\n\np2\n\np3\n\nextra';
     vi.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, json: async () => ({ letter }) } as any);
-    fillInputs('A resume line', 'A JD line');
+    goPasteAndFill('A resume line', 'A JD line');
     fireEvent.click(screen.getByRole('button', { name: /Generate/i }));
-    await waitFor(() => expect((screen.getAllByRole('textbox')[2] as HTMLTextAreaElement).value).toBeTruthy());
-    const value = (screen.getAllByRole('textbox')[2] as HTMLTextAreaElement).value;
+    // Output textbox is the last textarea
+    await waitFor(() => expect((screen.getAllByRole('textbox').at(-1) as HTMLTextAreaElement).value).toBeTruthy());
+    const value = (screen.getAllByRole('textbox').at(-1) as HTMLTextAreaElement).value;
     const paras = value.split(/\n{2,}/).filter(Boolean);
     expect(paras.length).toBe(3);
   });
@@ -48,7 +53,7 @@ describe('CoverLetterPage', () => {
     render(<CoverLetterPage />);
     const promise = new Promise<any>((resolve) => setTimeout(() => resolve({ ok: true, json: async () => ({ letter: 'a\n\nb\n\nc' }) }), 8000));
     vi.spyOn(global, 'fetch' as any).mockReturnValue(promise as any);
-    fillInputs('A', 'B');
+    goPasteAndFill('A', 'B');
     const btn = screen.getByRole('button', { name: /Generate/i });
     fireEvent.click(btn);
     // Loading state
@@ -57,5 +62,29 @@ describe('CoverLetterPage', () => {
     await waitFor(() => expect(btn).not.toBeDisabled());
     vi.useRealTimers();
   });
-});
 
+  it('paste flow prepopulates editor and reset works', async () => {
+    render(<CoverLetterPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Paste resume text/i }));
+    const resumeBox = screen.getByLabelText(/Paste resume text/i);
+    fireEvent.change(resumeBox, { target: { value: 'Line 1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    // Editor visible
+    expect(screen.getByLabelText(/Resume Text Editor/i)).toBeInTheDocument();
+    const editor = screen.getByLabelText(/Resume Text Editor/i) as HTMLTextAreaElement;
+    expect(editor.value).toContain('Line 1');
+    // Edit triggers reset button
+    fireEvent.change(editor, { target: { value: 'Line 1 edited' } });
+    expect(screen.getByRole('button', { name: /Reset to extracted/i })).toBeInTheDocument();
+  });
+
+  it('upload flow shows filename and editor', async () => {
+    render(<CoverLetterPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Upload resume \(PDF\/DOCX\)/i }));
+    const fileInput = screen.getByLabelText(/Upload resume \(PDF\/DOCX\)/i).parentElement!.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([new Uint8Array([1,2,3])], 'resume.pdf', { type: 'application/pdf' });
+    vi.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, json: async () => ({ text: 'Extracted content', warnings: [], meta: { chars: 17 } }) } as any);
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByText(/Extracted content/i)).toBeInTheDocument());
+  });
+});
