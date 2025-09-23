@@ -1,12 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Textarea } from "../components/ui/textarea";
 import { Toaster } from "../components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Clipboard, File as FileIcon, FileText, Loader2, Upload } from "lucide-react";
-import { Input } from "../components/ui/input";
 
 // Optional Figma-driven UI loader using Vite's import.meta.glob.
 // This avoids hard-importing a file that may not exist yet, which breaks dev server.
@@ -295,100 +290,6 @@ export default function CoverLetterPageV2() {
             <FigmaCoverLetter {...figmaProps} />
           </Suspense>
         )}
-
-        {/* Fallback UI when Figma component isn’t present yet */}
-        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inputs (Fallback)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-md border p-3 text-sm">
-                Place your Figma-generated component at
-                <code className="ml-1 px-1 py-0.5 bg-muted rounded">src/components/CoverLetterGenerator.tsx</code>.
-                It will render above with live backend wiring.
-              </div>
-
-              {/* Minimal controls to validate backend wiring */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Resume</label>
-                <Textarea rows={8} value={resume} onChange={(e) => onResumeChange(e.target.value)} placeholder="Paste your resume text..." />
-                <div className="text-xs text-muted-foreground mt-1">{resume.length}/{MAX_INPUT}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Job Description</label>
-                <Textarea rows={8} value={jd} onChange={(e) => onJdChange(e.target.value)} placeholder="Paste the job description..." />
-                <div className="text-xs text-muted-foreground mt-1">{jd.length}/{MAX_INPUT}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={onGenerate} disabled={loading}>
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {loading ? 'Generating...' : 'Generate'}
-                </Button>
-                <div className="text-xs text-muted-foreground">Or upload a PDF/DOCX below to extract resume text.</div>
-              </div>
-
-              <div className="space-y-2">
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload resume (PDF/DOCX)"
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  onDrop={onDrop}
-                  className="border-2 border-dashed rounded-md p-4 text-center"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="w-5 h-5 text-muted-foreground" />
-                    <div className="text-sm">Drag and drop your resume here</div>
-                    <div className="text-xs text-muted-foreground">PDF or DOCX, up to 5 MB</div>
-                    <div className="mt-2">
-                      <Button size="sm" asChild>
-                        <label className="cursor-pointer">
-                          Choose file
-                          <Input 
-                            type="file" 
-                            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                            onChange={(e) => onFileSelected(e.target.files?.[0] || null)}
-                            className="sr-only"
-                          />
-                        </label>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                {fileMeta && (
-                  <div className="flex items-center justify-between text-sm border rounded-md p-2">
-                    <div className="flex items-center gap-2"><FileIcon className="w-4 h-4" /> {fileMeta.name} <span className="text-muted-foreground">({Math.ceil(fileMeta.size/1024)} KB)</span></div>
-                    <div>
-                      <input
-                        ref={replaceInputRef}
-                        type="file"
-                        className="sr-only"
-                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        aria-label="Replace uploaded resume file"
-                        onChange={(e) => onFileSelected(e.target.files?.[0] || null)}
-                      />
-                      <Button variant="ghost" size="sm" onClick={() => replaceInputRef.current?.click()}>Replace</Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Output Letter</CardTitle>
-              <Button variant="outline" size="sm" onClick={onCopy} disabled={!letter}>
-                <Clipboard className="w-4 h-4 mr-1" /> Copy
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Textarea value={letter} readOnly rows={18} placeholder="Generated letter will appear here..." />
-              <div className="text-xs text-muted-foreground mt-2">Paragraph breaks are preserved.</div>
-            </CardContent>
-          </Card>
-        </div>
       </main>
       {debugLayout && (
         <div className="fixed bottom-4 right-4 z-50 bg-card text-foreground border shadow-sm rounded-md px-3 py-2 text-xs">
