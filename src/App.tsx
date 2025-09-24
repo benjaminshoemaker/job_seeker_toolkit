@@ -108,8 +108,8 @@ const tools: Tool[] = [
   {
     id: "interview-prep",
     title: "Interview Prep Assistant",
-    description: "Practice common interview questions and get personalized feedback on your responses.",
-    detailedDescription: "AI-powered interview coaching that adapts to your industry, role, and experience level with personalized question sets and feedback.",
+    description: "Practice common interview questions and give you the tools to succeed and evalute the role & company.",
+    detailedDescription: "AI-powered interview coaching that adapts to your industry, role, and experience level with personalized question sets.",
     icon: <MessageSquare className="w-5 h-5" />,
     badge: "Internal",
     category: "Interview Prep",
