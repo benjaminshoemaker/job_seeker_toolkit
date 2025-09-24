@@ -119,8 +119,8 @@ const tools: Tool[] = [
   {
     id: "company-research",
     title: "Company Research Tool",
-    description: "Practice common interview questions and get personalized feedback on your responses.",
-    detailedDescription: "AI-powered interview coaching that adapts to your industry, role, and experience level with personalized question sets and feedback.",
+    description: "Research any company in minutes with sourced facts, trends, and risks.",
+    detailedDescription: "AI-powered; Aggregates filings, product docs, pricing, hiring data, reviews, and news; summarizes stage, traction, unit economics, leadership, and AI posture.",
     icon: <MessageSquare className="w-5 h-5" />,
     badge: "Internal",
     category: "Interview Prep",

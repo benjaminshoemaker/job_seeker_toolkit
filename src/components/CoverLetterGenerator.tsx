@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import type React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -102,7 +103,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
+    const files = Array.from(e.dataTransfer.files) as File[];
     if (files.length > 0) {
       handleFileUpload(files[0]);
     }

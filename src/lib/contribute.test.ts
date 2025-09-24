@@ -4,8 +4,7 @@ import { openContribute } from './contribute';
 describe('openContribute(edit) page-aware mapping', () => {
   beforeEach(() => {
     // Mock window.open
-    // @ts-expect-error test override
-    window.open = vi.fn();
+    window.open = vi.fn() as any;
   });
 
   it('opens App page file for /', () => {
@@ -35,4 +34,3 @@ describe('openContribute(edit) page-aware mapping', () => {
     );
   });
 });
-
