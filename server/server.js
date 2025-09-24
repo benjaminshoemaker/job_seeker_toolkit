@@ -10,6 +10,7 @@ import { URL as NodeURL } from 'node:url';
 import { isIP } from 'node:net';
 import { lookup } from 'node:dns/promises';
 import Busboy from 'busboy';
+import { checkLLMHealth } from './llmHealth.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const BUILD_DIR = resolve(process.cwd(), 'build');
@@ -505,6 +506,17 @@ const server = createServer(async (req, res) => {
 
     if ((req.url || '').startsWith('/api/')) {
       console.log('[api]', req.method, req.url, { origin: req.headers.origin || '' });
+    }
+
+    // LLM health check (no-cost endpoint)
+    if (req.url === '/api/llm/health' && req.method === 'GET') {
+      try {
+        const result = await checkLLMHealth({ key: OPENAI_API_KEY, model: OPENAI_MODEL });
+        return sendJSON(res, 200, result);
+      } catch (e) {
+        console.error('[api] /api/llm/health error', e?.message || e);
+        return sendJSON(res, 500, { ok: false, error: 'health_check_failed' });
+      }
     }
 
     if (req.url === '/api/cover-letter/generate' && req.method === 'POST') {
