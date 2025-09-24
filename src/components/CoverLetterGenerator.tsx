@@ -54,6 +54,8 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState("");
   const [isCopied, setIsCopied] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [isImportingJD, setIsImportingJD] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +78,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
       toast.error("Please upload a PDF or DOCX file");
       return;
     }
+    setIsUploadingResume(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -98,6 +101,8 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     } catch (e: any) {
       const msg = String(e?.message || "Extraction failed");
       toast.error(msg);
+    } finally {
+      setIsUploadingResume(false);
     }
   };
 
@@ -133,6 +138,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
       return;
     }
 
+    setIsImportingJD(true);
     try {
       const res = await fetch('/api/jd-from-url', {
         method: 'POST',
@@ -149,6 +155,8 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
       toast.success(host ? `Job description imported from ${host}` : 'Job description imported');
     } catch (error: any) {
       toast.error(String(error?.message || 'Unable to import from URL. Please try pasting the job description text instead.'));
+    } finally {
+      setIsImportingJD(false);
     }
   };
 
@@ -288,14 +296,24 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                 {resumeMode === "upload" && (
                   <div className="space-y-4">
                     <div
-                      className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                      onDrop={handleDrop}
+                      className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isUploadingResume ? 'border-muted-foreground/50 cursor-not-allowed opacity-75' : 'border-muted-foreground/25 hover:border-primary/50 cursor-pointer'}`}
+                      onDrop={isUploadingResume ? undefined : handleDrop}
                       onDragOver={(e) => e.preventDefault()}
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => { if (!isUploadingResume) fileInputRef.current?.click(); }}
                     >
-                      <Upload className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
-                      <p className="font-medium mb-2">Drop your resume here or click to browse</p>
-                      <p className="text-sm text-muted-foreground">PDF or DOCX files, up to 5 MB</p>
+                      {isUploadingResume ? (
+                        <>
+                          <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-muted-foreground" />
+                          <p className="font-medium mb-2">Extracting resume…</p>
+                          <p className="text-sm text-muted-foreground">Hang tight while we parse your file</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
+                          <p className="font-medium mb-2">Drop your resume here or click to browse</p>
+                          <p className="text-sm text-muted-foreground">PDF or DOCX files, up to 5 MB</p>
+                        </>
+                      )}
                     </div>
                     <input
                       ref={fileInputRef}
@@ -304,7 +322,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                       onChange={handleFileSelect}
                       className="hidden"
                     />
-                    <Button variant="ghost" onClick={() => setResumeMode("choose")}>
+                    <Button variant="ghost" onClick={() => setResumeMode("choose")} disabled={isUploadingResume}>
                       Back to options
                     </Button>
                   </div>
@@ -353,6 +371,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => replaceFileInputRef.current?.click()}
+                              disabled={isUploadingResume}
                             >
                               Replace
                             </Button>
@@ -367,6 +386,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                                 setResumeText("");
                                 setOriginalResumeText("");
                               }}
+                              disabled={isUploadingResume}
                             >
                               <X className="w-4 h-4" />
                             </Button>
@@ -444,10 +464,17 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                       />
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Button onClick={handleUrlImport} disabled={!jobDescUrl.trim()}>
-                        Import
+                      <Button onClick={handleUrlImport} disabled={!jobDescUrl.trim() || isImportingJD}>
+                        {isImportingJD ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          'Import'
+                        )}
                       </Button>
-                      <Button variant="ghost" onClick={() => setJobDescMode("choose")}>
+                      <Button variant="ghost" onClick={() => setJobDescMode("choose")} disabled={isImportingJD}>
                         Back
                       </Button>
                     </div>
