@@ -8,6 +8,10 @@ import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner@2.0.3";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import howItWorksMd from "../content/cover-letter-how-it-works.md?raw";
 import {
   ArrowLeft,
   FileText,
@@ -20,6 +24,7 @@ import {
   Edit3,
   RotateCcw,
   AlertCircle,
+  HelpCircle,
 } from "lucide-react";
 
 interface CoverLetterGeneratorProps {
@@ -56,6 +61,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isImportingJD, setIsImportingJD] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -239,24 +245,73 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            <Separator orientation="vertical" className="h-6 hidden sm:block" />
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <FileText className="w-5 h-5" />
+        <Collapsible open={showHowItWorks} onOpenChange={setShowHowItWorks}>
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={onBack}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Separator orientation="vertical" className="h-6 hidden sm:block" />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h1 className="text-lg sm:text-xl font-semibold">Cover Letter Generator</h1>
+                  <Badge variant="default" className="text-xs hidden sm:inline-flex">
+                    AI-Powered
+                  </Badge>
+                </div>
               </div>
-              <h1 className="text-lg sm:text-xl font-semibold">Cover Letter Generator</h1>
-              <Badge variant="default" className="text-xs hidden sm:inline-flex">
-                AI-Powered
-              </Badge>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  {showHowItWorks ? 'Hide explanation' : 'How this works'}
+                </Button>
+              </CollapsibleTrigger>
             </div>
           </div>
-        </div>
+          <CollapsibleContent>
+            <div className="container mx-auto px-4 pb-4">
+              <Card>
+                <CardContent className="py-4">
+                  <div className="max-w-none markdown-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({ node, ...props }) => <h2 className="text-lg font-semibold mt-2 mb-2" {...props} />,
+                        h2: ({ node, ...props }) => <h3 className="text-base font-semibold mt-3 mb-2" {...props} />,
+                        h3: ({ node, ...props }) => <h4 className="text-sm font-semibold mt-2 mb-2" {...props} />,
+                        p: ({ node, ...props }) => <p className="mb-2 text-sm text-muted-foreground" {...props} />,
+                        ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 text-sm text-muted-foreground" {...props} />,
+                        ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 text-sm text-muted-foreground" {...props} />,
+                        li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                        a: ({ node, ...props }) => <a className="text-blue-600 underline hover:no-underline" target="_blank" rel="noreferrer" {...props} />,
+                        code: (props) => {
+                          const { inline, children, ...rest } = props as any;
+                          if (inline) {
+                            return <code className="px-1 py-0.5 rounded bg-muted text-xs" {...rest}>{children}</code>;
+                          }
+                          return <pre className="p-3 rounded bg-muted overflow-x-auto"><code {...rest}>{children}</code></pre>;
+                        },
+                        table: ({ node, ...props }) => (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm" {...props} />
+                          </div>
+                        ),
+                        th: ({ node, ...props }) => <th className="border px-2 py-1 text-left" {...props} />,
+                        td: ({ node, ...props }) => <td className="border px-2 py-1 align-top" {...props} />,
+                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 pl-3 italic text-muted-foreground" {...props} />,
+                      }}
+                    >
+                      {howItWorksMd}
+                    </ReactMarkdown>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </header>
 
       {/* Main Content */}
