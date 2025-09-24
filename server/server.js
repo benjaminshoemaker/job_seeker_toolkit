@@ -257,7 +257,15 @@ function applyCors(req, res) {
   const origin = req.headers.origin || '';
   const isProd = NODE_ENV === 'production';
   const isApi = (req.url || '').startsWith('/api/');
-  // Only enforce CORS for API routes. Static assets and HTML should be served regardless.
+  const host = req.headers.host || '';
+  const proto = (req.headers['x-forwarded-proto'] || '').toString() || 'https';
+  const siteOrigin = host ? `${proto}://${host}` : '';
+
+  // Always include standard headers
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Non-API routes: permissive
   if (!isApi) {
     if (!isProd) {
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -265,28 +273,29 @@ function applyCors(req, res) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return { allowed: true };
   }
 
+  // API routes
   if (!isProd) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return { allowed: true };
   }
-  if (!ALLOWED_ORIGIN) return { allowed: false };
-  const allowed = new Set(ALLOWED_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean));
-  const ok = origin && allowed.has(origin);
-  if (ok) {
+
+  // In production: allow if same-origin or explicitly allowed by env
+  const allowedSet = new Set(String(ALLOWED_ORIGIN || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean));
+  const sameOrigin = origin && siteOrigin && origin === siteOrigin;
+  const inAllowlist = origin && allowedSet.has(origin);
+  const allowed = sameOrigin || inAllowlist;
+  if (allowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
-  return { allowed: ok };
+  return { allowed };
 }
 
 validateEnvOrExit();
@@ -296,13 +305,26 @@ const server = createServer(async (req, res) => {
     // CORS
     const cors = applyCors(req, res);
     if (req.method === 'OPTIONS') {
-      if (!cors.allowed) { res.writeHead(403); return res.end('CORS not allowed'); }
+      if (!cors.allowed) { 
+        console.warn('[cors] Preflight blocked', { url: req.url, origin: req.headers.origin });
+        res.writeHead(403); return res.end('CORS not allowed'); 
+      }
       res.writeHead(204); return res.end();
     }
-    if (!cors.allowed) { res.writeHead(403); return res.end('CORS not allowed'); }
+    if (!cors.allowed) { 
+      console.warn('[cors] Request blocked', { url: req.url, origin: req.headers.origin });
+      res.writeHead(403); return res.end('CORS not allowed'); 
+    }
+
+    if ((req.url || '').startsWith('/api/')) {
+      console.log('[api]', req.method, req.url, { origin: req.headers.origin || '' });
+    }
 
     if (req.url === '/api/cover-letter/generate' && req.method === 'POST') {
-      if (!OPENAI_API_KEY) return sendJSON(res, 500, { error: 'Missing OPENAI_API_KEY' });
+      if (!OPENAI_API_KEY) {
+        console.error('[openai] Missing OPENAI_API_KEY');
+        return sendJSON(res, 500, { error: 'Missing OPENAI_API_KEY' });
+      }
 
       let body;
       try { body = await parseBody(req); } catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
@@ -318,17 +340,20 @@ const server = createServer(async (req, res) => {
         const letter = await callOpenAI(resume, jd, ac.signal);
         clearTimeout(timeout);
         if (!letter || !String(letter).trim()) {
+          console.error('[openai] Empty model response');
           return sendJSON(res, 502, { error: 'Empty model response' });
         }
         return sendJSON(res, 200, { letter });
       } catch (e) {
         clearTimeout(timeout);
         const msg = e?.name === 'AbortError' ? 'Provider timeout' : (e?.message || 'Generation failed');
+        console.error('[openai] Error', msg);
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 500, { error: msg });
       }
     }
 
     if (req.url === '/api/extract-resume' && req.method === 'POST') {
+      console.log('[api] /api/extract-resume start');
       // multipart/form-data with single file "file"
       try {
         const { file } = await parseMultipart(req);
@@ -354,14 +379,18 @@ const server = createServer(async (req, res) => {
             if (!out.warnings.includes(OCR_WARNING)) out.warnings.push(OCR_WARNING);
           }
         }
+        console.log('[api] /api/extract-resume ok', { ms: elapsed, chars: trimmed.length });
         return sendJSON(res, 200, out);
       } catch (e) {
-        const msg = /too large/i.test(String(e?.message || '')) ? 'File too large (max 5 MB).' : 'Extraction failed. The file may be corrupted.';
-        return sendJSON(res, /too large/i.test(String(e?.message || '')) ? 413 : 400, { error: msg });
+        const tooLarge = /too large/i.test(String(e?.message || ''));
+        const msg = tooLarge ? 'File too large (max 5 MB).' : 'Extraction failed. The file may be corrupted.';
+        console.error('[api] /api/extract-resume error', e?.message || e);
+        return sendJSON(res, tooLarge ? 413 : 400, { error: msg });
       }
     }
 
     if (req.url === '/api/jd-from-url' && req.method === 'POST') {
+      console.log('[api] /api/jd-from-url start');
       let body;
       try { body = await parseBody(req); } catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
       const urlStr = String(body?.url || '').trim();
@@ -383,7 +412,8 @@ const server = createServer(async (req, res) => {
         if (isPrivateV4 || isLoopbackV6) {
           return sendJSON(res, 400, { error: 'Unsupported or private address.' });
         }
-      } catch {
+      } catch (e) {
+        console.error('[api] dns lookup failed', e?.message || e);
         return sendJSON(res, 400, { error: 'DNS resolution failed.' });
       }
 
@@ -404,7 +434,10 @@ const server = createServer(async (req, res) => {
             if (current.protocol !== 'https:') return sendJSON(res, 400, { error: 'Redirected to non-HTTPS URL.' });
             continue;
           }
-          if (!r.ok) return sendJSON(res, 400, { error: `Fetch failed (${r.status}).` });
+          if (!r.ok) {
+            console.error('[api] fetch failed', { status: r.status, url: current.toString() });
+            return sendJSON(res, 400, { error: `Fetch failed (${r.status}).` });
+          }
           const ctype = String(r.headers.get('content-type') || '').toLowerCase();
           const allowed = ctype.includes('text/html') || ctype.includes('application/ld+json');
           if (!allowed) return sendJSON(res, 415, { error: 'Unsupported content type.' });
@@ -431,13 +464,16 @@ const server = createServer(async (req, res) => {
           const { text, source } = extractJD(html, current.toString());
           const cleaned = String(text || '').trim();
           if (!cleaned || cleaned.length < 50) {
+            console.warn('[api] extractor empty', { url: current.toString() });
             return sendJSON(res, 422, { error: 'No extractable text found. Paste the job description text instead.', warnings: ['Empty or near-empty page'] });
           }
+          console.log('[api] /api/jd-from-url ok', { host: current.host, chars: cleaned.length });
           return sendJSON(res, 200, { text: cleaned, source, host: current.host, warnings: [] });
         }
         return sendJSON(res, 400, { error: 'Too many redirects.' });
       } catch (e) {
         const msg = e?.name === 'AbortError' ? 'Timeout while fetching URL.' : 'Failed to fetch URL.';
+        console.error('[api] /api/jd-from-url error', msg);
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 400, { error: msg });
       }
     }
@@ -470,4 +506,5 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
+  console.log('[server] env', { NODE_ENV, OPENAI_MODEL, ALLOWED_ORIGIN });
 });
