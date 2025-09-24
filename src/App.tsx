@@ -71,26 +71,7 @@ const tools: Tool[] = [
     aiSummary: "AI-generated cover letters are becoming essential in modern job applications. Our tool will analyze job postings, company culture, and your background to create tailored letters that significantly improve response rates."
   },
   {
-    id: "resume-builder",
-    title: "Resume Editor",
-    description: "Gives you tailored feedback on your resume and LinkedIn profile.",
-    detailedDescription: "Resume builders help you create ATS-friendly resumes that pass through automated screening systems and impress hiring managers.",
-    icon: <FileText className="w-5 h-5" />,
-    badge: "External",
-    category: "Application Tools",
-    href: "https://resumeworded.com",
-    aiSummary: "Modern resume builders offer ATS optimization, industry-specific templates, and real-time feedback. The key is finding one that balances visual appeal with ATS compatibility.",
-    options: [
-      {
-        name: "Resume Worded",
-        description: "AI-powered resume optimization with real-time feedback and ATS scoring.",
-        href: "https://resumeworded.com",
-        rating: 4.8,
-        pros: ["ATS optimization", "Real-time feedback", "Industry-specific tips"],
-        cons: ["Limited free version", "Can be overwhelming for beginners"],
-        pricing: "Free tier available, Pro plans from $19/month"
-      }
-    ]
+    // Removed Resume Editor widget
   },
   {
     id: "offer-evaluation",
