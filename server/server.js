@@ -131,20 +131,116 @@ function ensureThreeParagraphs(text) {
   return [p1, p2, p3].filter((p) => p.trim().length).join('\n\n');
 }
 
-async function callOpenAI(resume, jd, signal) {
+function buildPrompts(resume, jd) {
   const system = "You write professional cover letters using only the supplied resume and job description. Do not invent facts. Body text only. No headers or contact blocks.";
-  const user = `Goal: Draft a professional cover letter in three concise paragraphs (~220 words).
-Constraints:
-- Use only information present or directly implied by the resume and job description.
-- Do not add contact blocks, dates, or headings. Provide only the body text.
+  const user = `Title: Single-Pass Cover Letter Writer with Built-In Extraction and Validation
 
-Resume:
-${resume}
+Mode
+Run two phases in one response: (A) JD metadata extraction, (B) letter composition gated by validation.
 
-Job description:
-${jd}
+Inputs
+- Job description (JD): ${jd}
+- Resume: ${resume}
 
-Output: Only the cover letter body text, three paragraphs.`;
+Phase A — Extract + Validate (JD only)
+1) Extract verbatim substrings from the JD:
+- company
+- role_title
+- location (optional; map to {onsite|hybrid|remote} and city/region if present)
+- product_or_strategy_detail (short JD phrase: product name, market, customer segment, or strategy term)
+
+Normalization
+- Trim whitespace. Remove ™/®. Preserve Unicode. Keep original casing.
+
+Validation
+- company must be a real employer name. Ignore placeholders like: Confidential, Our company, We, The Company, Stealth, Employer.
+- role_title must include a profession noun (e.g., Product Manager, Data Scientist, Engineer).
+- If multiple titles, pick the one attached to responsibilities or the apply CTA.
+- Gate: if company or role_title missing → Output Rule 2.
+
+Phase B — Compose (only if Gate passed)
+Goal: short, tailored cover-letter body that improves callbacks.
+Length: 180–240 words. 2–3 paragraphs. Body text only.
+
+Hard constraints
+- Use ONLY facts from the resume and JD. No fabrication.
+- Mention {{company}} and {{role_title}} in the first sentence.
+- Include product_or_strategy_detail.
+- Evidence: use ≥2 quantified results from the resume. If only one number exists, use that plus one scale indicator (team size, budget, timeline). If neither exists → Output Rule 3.
+- Employer-first framing: state JD needs, then map proof to outcomes.
+- No headers, dates, addresses, salutations, or sign-offs.
+- Avoid boilerplate and clichés (e.g., “passionate,” “thrilled,” “world-class,” “dynamic self-starter”).
+- Limit first-person sentence starts to ≤2 sentences total.
+- Humanity Touch (each exactly once, specific and factual):
+	- One unusual, concrete resume detail a generic AI would miss.
+	- A genuine tie to {{company}}’s mission/product grounded in JD specifics.
+	- One brief authentic-voice line that sounds plausibly human and not templated.
+
+Writing Style:
+
+**PERPLEXITY & PREDICTABILITY CONTROL:**
+- Deliberately choose unexpected, creative word alternatives instead of obvious ones
+- Include some colloquialisms, idioms, and region-specific expressions
+- Add subtle imperfections that humans naturally make (minor redundancies, natural speech patterns)
+
+**EMOTIONAL INTELLIGENCE & HUMAN TOUCH:**
+- Infuse genuine emotional undertones appropriate to the content
+- Add subtle humor, sarcasm, or personality where appropriate
+
+**CONTEXTUAL AUTHENTICITY:**
+- Reference current events, popular culture, or common experiences
+- Add transitional phrases that feel conversational rather than mechanical
+
+**FINAL REQUIREMENTS:**
+- Ensure the writing sounds like it came from a real person with authentic voice
+- Make it feel like natural human communication, not polished AI output
+
+Micro-method
+- Infer top JD needs/outcomes.
+- Select 2–3 resume proof points with concrete metrics. Priority: hard numbers > scale indicators > relative improvements > specific distinctions.
+- If a risk is implied (relocation/industry switch/gap), add one risk-reduction line tied to JD needs.
+- Write: opening (1–2 sentences with goal and fit), core (4–6 sentences with measurable impact), close (1–2 sentences with specific motivation + one concrete thing you would deliver).
+
+Quality checks
+- References {{company}}, {{role_title}}, and product_or_strategy_detail.
+- ≥2 quantified results from resume.
+- 1+ specific JD detail integrated.
+- 180–240 words, 2–3 paragraphs.
+- No fabrication. No copy-paste of resume bullets.
+
+AI style filter
+- Ban: em dashes, ellipses, exclamation marks, rhetorical questions.
+- Semicolons ≤1. Prefer periods.
+- Digits for 2+ and metrics; no ~, +, ≈ unless present in resume; use “about/over”.
+- No quotes around ordinary terms.
+- Delete boilerplate phrases (examples: “I am writing to express my interest”, “excited to apply”, “proven track record”, “fast-paced environments”, “cutting-edge”, “world-class”, “synergy”, “dynamic self-starter”, “Dear Hiring Manager,”).
+- Replace “leverage/utilize” with “use” when adequate.
+- Never use the following words/phrases: "passionate", "thrilled", "synergy", "world-class", "rockstar", "ninja", "guru", "wizard", "dynamic self-starter", "think outside the box"
+- Phrases like “results-oriented,” “detail-oriented,” “strong communicator,” “team player,” “passionate about [industry]” must either be removed or immediately followed by a metric-backed proof in the same paragraph. If no proof available, delete.
+- Sentence starters “Additionally,” “Furthermore,” “Moreover,” “In addition,” “As such,” “Thus,” “Therefore,” “Overall”: ≤1 total; vary syntax.
+- Adverbs ending in “-ly”: ≤3 total.
+
+Output rules (choose exactly one)
+1) Gate passed and evidence available → Output only the final cover-letter body text. Nothing else.
+2) JD gate failed →
+{
+"status": "error",
+"error": "INSUFFICIENT_JD_METADATA",
+"missing": ["company" | "role_title"],
+"notes": "<one-line reason>"
+}
+3) Resume evidence insufficient →
+{
+"status": "error",
+"error": "INSUFFICIENT_RESUME_EVIDENCE",
+"missing": ["two_quantified_results"],
+"found": ["<brief quotes of any metrics found>"]
+}`;
+  return { system, user };
+}
+
+async function callOpenAI(resume, jd, signal) {
+  const { system, user } = buildPrompts(resume, jd);
 
   // Build Responses API payload (recommended API)
   // Use instructions + simple input string to avoid content-type incompatibilities
@@ -207,7 +303,62 @@ Output: Only the cover letter body text, three paragraphs.`;
         // Fallback if Responses API proxies to chat-like output
         text = data.choices?.[0]?.message?.content || '';
       }
-      return ensureThreeParagraphs(String(text || '').trim());
+      const raw = String(text || '').trim();
+      // If model returned an error JSON despite high confidence, try to salvage
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.status === 'error' && parsed.error === 'INSUFFICIENT_JD_METADATA') {
+          const dbg = parsed.debug || {};
+          const confTotal = Number(dbg?.confidence?.total || 0);
+          const threshold = Number(dbg?.confidence?.threshold || 0.8);
+          const extracted = dbg?.extracted || {};
+          const cand = parsed.candidates || {};
+
+          // Prefer a mathematically recomputed total from contributions if present
+          let recomputed = NaN;
+          try {
+            const contrib = dbg?.confidence?.contributions || {};
+            const vals = Object.values(contrib).map((v) => Number(v) || 0);
+            if (vals.length) {
+              const sum = vals.reduce((a, b) => a + b, 0);
+              recomputed = Math.min(1, Math.max(0, sum));
+            }
+          } catch {}
+          const conf = Number.isFinite(recomputed) ? recomputed : confTotal;
+
+          function pick(list, allowBlocked = false) {
+            const arr = Array.isArray(list) ? list : [];
+            const ranked = arr
+              .filter((x) => allowBlocked || (x?.match_type !== 'blocklisted' && x?.match_type !== 'job_board'))
+              .sort((a, b) => Number(b?.similarity || 0) - Number(a?.similarity || 0));
+            return ranked[0]?.text || '';
+          }
+
+          const extractedCompany = pick(extracted?.company);
+          const extractedRole = pick(extracted?.role_title, true);
+          const fallbackCompany = Array.isArray(cand?.company) ? cand.company[0] : '';
+          const fallbackRole = Array.isArray(cand?.role_title) ? cand.role_title[0] : '';
+          const company = String(extractedCompany || fallbackCompany || '').trim();
+          const role_title = String(extractedRole || fallbackRole || '').trim();
+          const detail = Array.isArray(extracted?.product_or_strategy_detail) && extracted.product_or_strategy_detail[0]?.text
+            ? extracted.product_or_strategy_detail[0].text
+            : '';
+
+          const hasCompany = !!company;
+          const hasRole = !!role_title && /(manager|engineer|scientist|designer|analyst|lead|director|specialist|architect|developer|marketer|pm|product|sales|recruiter|consultant)/i.test(role_title);
+          const gatePasses = hasCompany && hasRole && conf >= (threshold || 0.8);
+
+          if (gatePasses) {
+            console.warn('[openai] Overriding JD gate failure using extracted candidates', { company, role_title, conf });
+            const letter = await composeLetterWithOverrides(resume, jd, { company, role_title, detail }, signal, request, buildBody);
+            return ensureThreeParagraphs(String(letter || '').trim());
+          }
+        }
+      } catch (_) {
+        // Not JSON or salvage not applicable; continue
+      }
+
+      return ensureThreeParagraphs(raw);
     }
     const txt = await resp.text().catch(() => '');
     const lower = (txt || '').toLowerCase();
@@ -241,6 +392,42 @@ Output: Only the cover letter body text, three paragraphs.`;
     throw new Error(`OpenAI error ${resp.status}: ${txt || resp.statusText}`);
   }
   throw new Error('OpenAI request failed after retries');
+}
+
+async function composeLetterWithOverrides(resume, jd, { company, role_title, detail }, signal, request, buildBody) {
+  const system = "You write professional cover letters using only the supplied resume and job description. Do not invent facts. Body text only. No headers or contact blocks.";
+  const user = `Title: Single-Pass Cover Letter Writer — Compose Only\n\nInputs\n- Job description (JD): ${jd}\n- Resume: ${resume}\n- Gate is pre-approved with:\n  - company: ${company}\n  - role_title: ${role_title}\n  - product_or_strategy_detail: ${detail || '(optional)'}\n\nTask\nWrite ONLY the cover letter body (no JSON, no headers), 180–240 words, 2–3 paragraphs.\nConstraints\n- Mention ${company} and ${role_title} in the first sentence.\n- Include the product_or_strategy_detail if relevant.\n- Use only facts from the resume and JD; include at least two quantified results from the resume if available.\n- No salutations or sign-offs. Body text only.`;
+
+  const base = {
+    model: OPENAI_MODEL,
+    instructions: system,
+    input: user,
+    response_format: { type: 'text' },
+    modalities: ['text'],
+  };
+  const body = buildBody({ useMaxOutputTokens: true, includeTemperature: true, includeResponseFormat: true, includeModalities: true });
+  const resp = await request(body);
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error(`OpenAI compose override error ${resp.status}: ${txt || resp.statusText}`);
+  }
+  const data = await resp.json().catch(() => ({}));
+  if (typeof data?.output_text === 'string') return data.output_text;
+  if (Array.isArray(data?.output)) {
+    const texts = [];
+    for (const item of data.output) {
+      const parts = Array.isArray(item?.content) ? item.content : [];
+      for (const part of parts) {
+        if (typeof part?.text === 'string' && part.text.trim()) texts.push(part.text);
+        else if (part?.type === 'output_text' && typeof part?.text === 'string') texts.push(part.text);
+      }
+    }
+    return texts.join('\n\n');
+  }
+  if (Array.isArray(data?.choices)) {
+    return data.choices?.[0]?.message?.content || '';
+  }
+  return '';
 }
 
 function validateEnvOrExit() {
@@ -477,6 +664,8 @@ const server = createServer(async (req, res) => {
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 400, { error: msg });
       }
     }
+
+    
 
     // Static files (production)
     try {
