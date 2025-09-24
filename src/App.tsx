@@ -116,6 +116,17 @@ const tools: Tool[] = [
     comingSoon: true,
     aiSummary: "Effective interview prep requires both technical knowledge and communication skills. Our assistant will provide industry-specific questions, behavioral scenarios, and real-time feedback to build confidence."
   },
+  {
+    id: "company-research",
+    title: "Company Research Tool",
+    description: "Practice common interview questions and get personalized feedback on your responses.",
+    detailedDescription: "AI-powered interview coaching that adapts to your industry, role, and experience level with personalized question sets and feedback.",
+    icon: <MessageSquare className="w-5 h-5" />,
+    badge: "Internal",
+    category: "Interview Prep",
+    comingSoon: true,
+    aiSummary: "Effective interview prep requires both technical knowledge and communication skills. Our assistant will provide industry-specific questions, behavioral scenarios, and real-time feedback to build confidence."
+  },
 
 
 
@@ -180,29 +191,7 @@ export default function App() {
     setSelectedTool(tool);
   };
 
-  const handleContributeClick = (type: string) => {
-    const baseUrl = "https://github.com/benjaminshoemaker/job_seeker_toolkit";
-    
-    switch (type) {
-      case 'bug':
-        window.open(`${baseUrl}/issues/new?template=bug_report.md`, '_blank');
-        break;
-      case 'feature':
-        window.open(`${baseUrl}/issues/new?template=feature_request.md`, '_blank');
-        break;
-      case 'edit':
-        window.open(`${baseUrl}/edit/main/src/App.tsx`, '_blank');
-        break;
-      case 'roadmap':
-        window.open(`${baseUrl}/projects/1`, '_blank');
-        break;
-      case 'code':
-        window.open(baseUrl, '_blank');
-        break;
-      default:
-        window.open(baseUrl, '_blank');
-    }
-  };
+  
 
   const renderStars = (rating: number) => {
     return (
@@ -219,60 +208,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Briefcase className="w-8 h-8 text-primary" />
-              <h1 className="text-2xl font-semibold">Job Seeker Toolkit</h1>
-              <Badge variant="outline" className="ml-2 text-xs">
-                <Github className="w-3 h-3 mr-1" />
-                Open Source
-              </Badge>
-            </div>
-            <div className="flex items-center space-x-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button variant="outline" size="sm">
-                    <Heart className="w-4 h-4 mr-2" />
-                    Contribute
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleContributeClick('bug')}>
-                    <Bug className="w-4 h-4 mr-2" />
-                    Report Bug
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleContributeClick('feature')}>
-                    <Lightbulb className="w-4 h-4 mr-2" />
-                    Request Feature
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleContributeClick('edit')}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit This Page
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleContributeClick('roadmap')}>
-                    <Map className="w-4 h-4 mr-2" />
-                    View Roadmap
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleContributeClick('code')}>
-                    <Code className="w-4 h-4 mr-2" />
-                    Contribute Code
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Star className="w-4 h-4" />
-                <span>Your career advancement companion</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="bg-background">
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12">
@@ -500,74 +436,6 @@ export default function App() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted/50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-            <div>
-              <h4 className="font-medium mb-3">About</h4>
-              <p className="text-sm text-muted-foreground">
-                Built to help job seekers succeed in their career journey. This open source toolkit provides curated tools and resources for every stage of the job search process.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-3">Contribute</h4>
-              <div className="space-y-2 text-sm">
-                <button 
-                  onClick={() => handleContributeClick('bug')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Report bugs & issues
-                </button>
-                <button 
-                  onClick={() => handleContributeClick('feature')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Suggest new tools
-                </button>
-                <button 
-                  onClick={() => handleContributeClick('code')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Contribute code
-                </button>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium mb-3">Community</h4>
-              <div className="space-y-2 text-sm">
-                <button 
-                  onClick={() => handleContributeClick('roadmap')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View roadmap
-                </button>
-                <button 
-                  onClick={() => window.open('https://github.com/benjaminshoemaker/job_seeker_toolkit/discussions', '_blank')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Join discussions
-                </button>
-                <button 
-                  onClick={() => window.open('https://github.com/benjaminshoemaker/job_seeker_toolkit', '_blank')}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  GitHub repository
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="text-center pt-6 border-t">
-            <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-2">
-              <Github className="w-4 h-4" />
-              <span>Open source and community maintained</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Missing a tool? Help us improve by contributing to the project.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
