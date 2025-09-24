@@ -2,6 +2,7 @@
 # Job Seeker Toolkit
 
 [![CI](https://github.com/benjaminshoemaker/job_seeker_toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/benjaminshoemaker/job_seeker_toolkit/actions/workflows/ci.yml)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/benjaminshoemaker/job_seeker_toolkit)
 
 ## Screenshot
 
@@ -123,6 +124,49 @@ Tests included:
 ## CI
 
 GitHub Actions runs typecheck, build, and tests on pushes and PRs (see `.github/workflows/ci.yml`).
+
+## Deployment
+
+The app is a Vite React client plus a tiny Node server that serves `build/` and implements `/api` routes. Deploy it as a single Node web service.
+
+Environment variables (required in production):
+- `OPENAI_API_KEY` — your OpenAI key
+- `OPENAI_MODEL` — default model (e.g., `gpt-4o-mini`)
+- `NODE_ENV=production` — enables strict CORS
+- `ALLOWED_ORIGIN=https://your-domain` — exact origin for the browser (comma‑separated list allowed)
+- `PORT` — optional; most hosts set this for you
+
+### Quick deploy: Render.com
+1) New → Web Service → Connect this repo
+2) Environment: Node 20
+3) Build command: `npm ci && npm run build`
+4) Start command: `node server/server.js`
+5) Env vars: set the ones above. For `ALLOWED_ORIGIN`, use your Render URL (e.g., `https://your-app.onrender.com`).
+6) Deploy. Render sets `PORT` automatically.
+
+Or click “Deploy to Render”. The `render.yaml` in this repo preconfigures the service; you’ll only need to add `OPENAI_API_KEY` and adjust `ALLOWED_ORIGIN` after Render assigns your URL.
+
+### Docker
+Build and run the included container locally:
+
+```
+docker build -t jobseeker:latest .
+docker run -p 8787:8787 \
+  -e NODE_ENV=production \
+  -e OPENAI_API_KEY=sk-... \
+  -e OPENAI_MODEL=gpt-4o-mini \
+  -e ALLOWED_ORIGIN=http://localhost:8787 \
+  jobseeker:latest
+```
+
+Then open `http://localhost:8787`.
+
+### Railway / Fly.io / Heroku
+- Install deps: `npm ci`
+- Build: `npm run build`
+- Start: `node server/server.js`
+- Set env: `OPENAI_API_KEY`, `OPENAI_MODEL`, `NODE_ENV=production`, `ALLOWED_ORIGIN=https://your-domain`
+- Ensure the platform forwards its assigned `PORT` to the process (default is handled).
 
 ## Contributing
 
