@@ -138,11 +138,12 @@ Environment variables (required in production):
 
 ### Quick deploy: Render.com
 1) New → Web Service → Connect this repo
-2) Environment: Node 20
+2) Environment: Node 20 (this repo sets `"engines": { "node": ">=20 <21" }`)
 3) Build command: `npm ci && npm run build`
 4) Start command: `node server/server.js`
-5) Env vars: set the ones above. For `ALLOWED_ORIGIN`, use your Render URL (e.g., `https://your-app.onrender.com`).
-6) Deploy. Render sets `PORT` automatically.
+5) Add env vars: set the ones above. For `ALLOWED_ORIGIN`, use your Render URL (e.g., `https://your-app.onrender.com`).
+6) Ensure devDependencies install during build: add env var `NPM_CONFIG_PRODUCTION=false` (already in `render.yaml`).
+7) Deploy. Render sets `PORT` automatically.
 
 Or click “Deploy to Render”. The `render.yaml` in this repo preconfigures the service; you’ll only need to add `OPENAI_API_KEY` and adjust `ALLOWED_ORIGIN` after Render assigns your URL.
 

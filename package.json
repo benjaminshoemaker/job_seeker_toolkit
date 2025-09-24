@@ -2,6 +2,7 @@
       "name": "Job Seeker Toolkit",
       "version": "0.1.0",
       "private": true,
+      "engines": { "node": ">=20 <21" },
       "dependencies": {
             "@mozilla/readability": "^0.5.0",
             "@radix-ui/react-accordion": "^1.2.3",
