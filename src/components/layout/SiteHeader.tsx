@@ -43,6 +43,17 @@ export function SiteHeader() {
                   <Code className="w-4 h-4 mr-2" />
                   Contribute Code
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <a
+                    href="https://github.com/users/benjaminshoemaker/projects/2"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Map className="w-4 h-4 mr-2" />
+                    Roadmap
+                  </a>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Removed tagline and decorative star */}
