@@ -256,6 +256,20 @@ function validateEnvOrExit() {
 function applyCors(req, res) {
   const origin = req.headers.origin || '';
   const isProd = NODE_ENV === 'production';
+  const isApi = (req.url || '').startsWith('/api/');
+  // Only enforce CORS for API routes. Static assets and HTML should be served regardless.
+  if (!isApi) {
+    if (!isProd) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return { allowed: true };
+  }
+
   if (!isProd) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
     res.setHeader('Vary', 'Origin');
