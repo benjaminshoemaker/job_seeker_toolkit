@@ -11,7 +11,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vitest/globals", "@testing-library/jest-dom", "node"],
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom", "node"],
     "paths": {
       "@radix-ui/react-accordion@1.2.3": ["./node_modules/@radix-ui/react-accordion"],
       "@radix-ui/react-alert-dialog@1.1.6": ["./node_modules/@radix-ui/react-alert-dialog"],
