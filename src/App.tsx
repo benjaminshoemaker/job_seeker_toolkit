@@ -71,9 +71,6 @@ const tools: Tool[] = [
     aiSummary: "AI-generated cover letters are becoming essential in modern job applications. Our tool will analyze job postings, company culture, and your background to create tailored letters that significantly improve response rates."
   },
   {
-    // Removed Resume Editor widget
-  },
-  {
     id: "offer-evaluation",
     title: "Offer Letter Evaluation",
     description: "Analyze job offers to understand compensation, benefits, and negotiation opportunities.",
