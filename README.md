@@ -3,6 +3,12 @@
 
 [![CI](https://github.com/benjaminshoemaker/job_seeker_toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/benjaminshoemaker/job_seeker_toolkit/actions/workflows/ci.yml)
 
+## Screenshot
+
+![App screenshot](docs/screenshot.png)
+
+The app now uses a global header and footer across all pages, including tools like the Cover Letter generator. The header’s Contribute menu links directly to bug/feature templates, the roadmap, and the repo; “Edit This Page” is page‑aware and opens the correct source file in GitHub for the current route.
+
 ## Cover Letter (OpenAI) Setup
 
 This app includes an AI Cover Letter tool at `/tools/cover-letter`. It uses a single provider (OpenAI Responses API) via a small Node server so your API key never reaches the client. The server passes the system prompt via `instructions` and the user prompt via `input`.
@@ -95,6 +101,29 @@ Tests included:
 
   Run `npm run dev` to start the development server.
   
+## Global Layout
+
+- Shared header/footer via `SiteLayout` wrap every page.
+- Files:
+  - `src/components/layout/SiteHeader.tsx`
+  - `src/components/layout/SiteFooter.tsx`
+  - `src/components/layout/SiteLayout.tsx`
+- Contribute links are centralized in `src/lib/contribute.ts` and include a page‑aware “Edit This Page”.
+
+## Tests & Coverage
+
+- Run tests in watch mode: `npm test`
+- Run once (CI mode): `npm run test:run`
+- Coverage report: `npm run test:coverage` then open `coverage/index.html`
+- Test areas covered:
+  - Frontend UI for the Cover Letter tool (paste, upload, replace/remove, copy, import from URL)
+  - Page‑aware edit links
+  - Backend extractors (PDF/DOCX and Job Description parsing)
+
+## CI
+
+GitHub Actions runs typecheck, build, and tests on pushes and PRs (see `.github/workflows/ci.yml`).
+
 ## Contributing
 
 Contributions are welcome! See CONTRIBUTING.md for guidelines, local setup, and how to file issues/PRs.
