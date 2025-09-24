@@ -279,7 +279,7 @@ export default function CoverLetterPageV2() {
   } as any;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <Toaster position="top-right" />
       {/* Removed duplicate header to avoid duplication with embedded component/header */}
 
