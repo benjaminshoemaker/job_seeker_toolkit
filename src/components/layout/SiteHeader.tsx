@@ -7,21 +7,21 @@ import { openContribute } from "../../lib/contribute";
 export function SiteHeader() {
   return (
     <header className="border-b bg-card">
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Briefcase className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-semibold">Job Seeker Toolkit</h1>
-            <Badge variant="outline" className="ml-2 text-xs">
+      <div className="container mx-auto px-4 py-4 sm:py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Briefcase className="w-5 h-5 sm:w-8 sm:h-8 text-primary" />
+            <h1 className="text-lg sm:text-2xl font-semibold truncate">Job Seeker Toolkit</h1>
+            <Badge variant="outline" className="ml-2 text-xs hidden sm:inline-flex">
               <Github className="w-3 h-3 mr-1" />
               Open Source
             </Badge>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button variant="outline" size="sm">
-                  <Heart className="w-4 h-4 mr-2" />
+                  <Github className="w-4 h-4 mr-2" />
                   Contribute
                   <ChevronDown className="w-4 h-4 ml-2" />
                 </Button>
