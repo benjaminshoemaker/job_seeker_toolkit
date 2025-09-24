@@ -41,7 +41,7 @@ export function SiteFooter() {
         <div className="text-center pt-6 border-t">
           <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-2">
             <Github className="w-4 h-4" />
-            <span>Open source and community maintained</span>
+            <span>Open source</span>
           </div>
           <p className="text-xs text-muted-foreground">
             Missing a tool? Help us improve by contributing to the project.

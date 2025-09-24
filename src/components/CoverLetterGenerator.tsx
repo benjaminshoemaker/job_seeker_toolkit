@@ -232,18 +232,18 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="ghost" size="sm" onClick={onBack}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center space-x-3">
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <FileText className="w-5 h-5" />
               </div>
-              <h1 className="text-xl font-semibold">Cover Letter Generator</h1>
-              <Badge variant="default" className="text-xs">
+              <h1 className="text-lg sm:text-xl font-semibold">Cover Letter Generator</h1>
+              <Badge variant="default" className="text-xs hidden sm:inline-flex">
                 AI-Powered
               </Badge>
             </div>
@@ -318,7 +318,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                       onChange={(e) => setPastedResumeText(e.target.value)}
                       className="min-h-32"
                     />
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button onClick={handleResumePaste} disabled={!pastedResumeText.trim()}>
                         Continue
                       </Button>
@@ -333,7 +333,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                   <div className="space-y-4">
                     {uploadedFile && (
                       <div className="bg-muted/50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center space-x-2">
                             <FileText className="w-4 h-4" />
                             <span className="font-medium">{uploadedFile.name}</span>
@@ -389,7 +389,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                         </span>
                       )}
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       {originalResumeText !== resumeText && (
                         <Button variant="outline" size="sm" onClick={resetResumeToOriginal}>
                           <RotateCcw className="w-3 h-3 mr-1" />
@@ -443,7 +443,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                         className="mt-2"
                       />
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button onClick={handleUrlImport} disabled={!jobDescUrl.trim()}>
                         Import
                       </Button>
@@ -462,7 +462,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                       onChange={(e) => setPastedJobDescText(e.target.value)}
                       className="min-h-32"
                     />
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button onClick={handleJobDescPaste} disabled={!pastedJobDescText.trim()}>
                         Continue
                       </Button>
@@ -477,7 +477,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
                   <div className="space-y-4">
                     {importedFromUrl && (
                       <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center space-x-2">
                             <Link className="w-4 h-4 text-blue-600" />
                             <span className="text-sm">Imported from {importedFromUrl}</span>

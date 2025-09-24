@@ -133,7 +133,7 @@ const tools: Tool[] = [
   // Salary & Negotiation
   {
     id: "levels-fyi",
-    title: "Levels.fyi",
+    title: "Compensation Comparison (Levels.fyi)",
     description: "Compare compensation packages across tech companies and career levels.",
     detailedDescription: "Detailed compensation data for tech companies including salary, equity, and bonus information across different levels and locations.",
     icon: <DollarSign className="w-5 h-5" />,
@@ -150,15 +150,6 @@ const tools: Tool[] = [
         pros: ["Very accurate data", "Equity calculations", "Level progression insights"],
         cons: ["Tech-focused only", "Can be overwhelming", "Limited geographic coverage"],
         pricing: "Free basic access, Premium from $99/year"
-      },
-      {
-        name: "Blind",
-        description: "Anonymous professional network with salary discussions and company insights.",
-        href: "https://teamblind.com",
-        rating: 4.1,
-        pros: ["Anonymous discussions", "Real employee insights", "Company-specific channels"],
-        cons: ["Can be toxic environment", "Unverified information", "Requires work email"],
-        pricing: "Free with verification"
       }
     ]
   },
@@ -211,12 +202,12 @@ export default function App() {
     <div className="bg-background">
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-8 sm:py-12">
         <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-4">
             Accelerate Your Job Search
           </h2>
-          <p className="text-lg text-muted-foreground mb-6">
+          <p className="text-base sm:text-lg text-muted-foreground mb-6">
             Tools that I've built or used myself for the job search process. No paywalls or fluff. 
           </p>
           <div className="bg-muted/50 p-4 rounded-lg mb-8 text-sm">
@@ -227,20 +218,6 @@ export default function App() {
             <p className="text-muted-foreground">
               I built some simple utilities for the parts of the search that shouldn’t be hard or costly. Contributions welcome but optional.
             </p>
-          </div>
-          <div className="flex justify-center space-x-4">
-            <Badge variant="secondary" className="text-sm">
-              <Clock className="w-3 h-3 mr-1" />
-              Save time
-            </Badge>
-            <Badge variant="secondary" className="text-sm">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Increase success
-            </Badge>
-            <Badge variant="secondary" className="text-sm">
-              <Target className="w-3 h-3 mr-1" />
-              Land better offers
-            </Badge>
           </div>
         </div>
       </section>
@@ -328,7 +305,7 @@ export default function App() {
 
       {/* Tool Detail Modal */}
       <Dialog open={!!selectedTool} onOpenChange={() => setSelectedTool(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[80vh] sm:max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-3">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -369,7 +346,7 @@ export default function App() {
                 <div className="space-y-4">
                   {selectedTool.options.map((option, index) => (
                     <Card key={index} className="p-4">
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                         <div>
                           <h5 className="font-medium">{option.name}</h5>
                           {renderStars(option.rating)}
@@ -377,7 +354,7 @@ export default function App() {
                         <Button 
                           size="sm" 
                           onClick={() => window.open(option.href, '_blank')}
-                          className="ml-4"
+                          className="sm:ml-4"
                         >
                           Visit <ExternalLink className="w-3 h-3 ml-1" />
                         </Button>
