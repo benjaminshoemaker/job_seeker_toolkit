@@ -8,6 +8,8 @@ services:
     startCommand: node server/server.js
     healthCheckPath: /
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: NODE_ENV
         value: production
       - key: OPENAI_API_KEY
@@ -16,4 +18,3 @@ services:
         value: gpt-4o-mini
       - key: ALLOWED_ORIGIN
         value: https://your-app.onrender.com
-
