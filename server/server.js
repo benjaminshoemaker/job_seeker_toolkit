@@ -489,7 +489,10 @@ function applyCors(req, res) {
   return { allowed };
 }
 
-validateEnvOrExit();
+const IS_TEST = !!process.env.VITEST || process.env.NODE_ENV === 'test';
+if (!IS_TEST) {
+  validateEnvOrExit();
+}
 
 const server = createServer(async (req, res) => {
   try {
@@ -717,10 +720,12 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
-  console.log('[server] env', { NODE_ENV, OPENAI_MODEL, ALLOWED_ORIGIN });
-});
+if (!IS_TEST) {
+  server.listen(PORT, () => {
+    console.log(`[server] listening on http://localhost:${PORT}`);
+    console.log('[server] env', { NODE_ENV, OPENAI_MODEL, ALLOWED_ORIGIN });
+  });
+}
 
 export async function buildStatsResponse() {
   try {
