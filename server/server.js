@@ -11,6 +11,7 @@ import { isIP } from 'node:net';
 import { lookup } from 'node:dns/promises';
 import Busboy from 'busboy';
 import { checkLLMHealth } from './llmHealth.js';
+import { phCapture, phCountCoverLetters } from './analytics.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const BUILD_DIR = resolve(process.cwd(), 'build');
@@ -40,6 +41,8 @@ const MODEL_TIMEOUT_MS = 20_000;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 const JD_FETCH_TIMEOUT_MS = 10_000;
 const JD_MAX_BYTES = 3 * 1024 * 1024; // 3 MB cap
+
+const IS_PROD = NODE_ENV === 'production';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -542,6 +545,9 @@ const server = createServer(async (req, res) => {
           console.error('[openai] Empty model response');
           return sendJSON(res, 502, { error: 'Empty model response' });
         }
+        // Fire-and-forget analytics capture (server-side, production-safe)
+        const distinctId = String(req.headers['x-ph-distinct-id'] || '').trim() || undefined;
+        phCapture({ event: 'cover_letter_generated', properties: { channel: 'server' }, distinct_id: distinctId });
         return sendJSON(res, 200, { letter });
       } catch (e) {
         clearTimeout(timeout);
@@ -678,6 +684,12 @@ const server = createServer(async (req, res) => {
     }
 
     
+    // Basic stats endpoint: total cover letters generated
+    if (req.url === '/api/stats/cover-letters' && req.method === 'GET') {
+      const out = await buildStatsResponse();
+      return sendJSON(res, out.code, out.data);
+    }
+
 
     // Static files (production)
     try {
@@ -709,3 +721,12 @@ server.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
   console.log('[server] env', { NODE_ENV, OPENAI_MODEL, ALLOWED_ORIGIN });
 });
+
+export async function buildStatsResponse() {
+  try {
+    const { total } = await phCountCoverLetters();
+    return { code: 200, data: { total, env: IS_PROD ? 'production' : 'development' } };
+  } catch (e) {
+    return { code: 500, data: { error: 'stats_failed' } };
+  }
+}
