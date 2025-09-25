@@ -157,6 +157,31 @@ const res = await fetch('/api/stats/cover-letters');
 const { total } = await res.json();
 ```
 
+### Production setup (multi‑environment)
+
+- Use separate PostHog projects for Dev and Prod (recommended by PostHog).
+- Convert your current project to “Prod” if desired, then create a new “Dev” project (or vice‑versa). Add the exact origins to Web Analytics Domains (no wildcards):
+  - Dev: `http://localhost:3000`, `http://localhost:8787`
+  - Prod: your Render URL and/or custom domain (e.g., `https://your-app.onrender.com`, `https://your-domain.com`)
+- Configure environment variables (see `.env.example`). At minimum:
+  - Dev: `VITE_POSTHOG_DEV_KEY`, `POSTHOG_DEV_PROJECT_KEY`, `POSTHOG_DEV_PROJECT_ID`, `POSTHOG_DEV_PERSONAL_API_KEY`
+  - Prod: `VITE_POSTHOG_PROD_KEY`, `POSTHOG_PROD_PROJECT_KEY`, `POSTHOG_PROD_PROJECT_ID`, `POSTHOG_PROD_PERSONAL_API_KEY`
+  - Region hosts (if EU residency): `VITE_POSTHOG_HOST`, `POSTHOG_INGESTION_HOST`, `POSTHOG_API_HOST`
+- Ensure `VITE_…` variables are present at build time for production builds.
+- Server will send events in prod; client sends dev events only to avoid double counting.
+
+Troubleshooting
+- If analytics don’t appear in PostHog:
+  - Confirm the correct project keys/IDs and hosts are set for the environment.
+  - Ad blockers may block client events; server events still arrive.
+  - Use Insights → Events in the selected project and filter by `event = cover_letter_generated`.
+- If tests fail with port errors (`EADDRINUSE`): ensure no local server is running on 8787; tests do not start the listener in Vitest.
+
+Developer notes
+- Analytics helpers are centralized in `server/analytics.js`.
+- Avoid adding new analytics calls directly in route handlers; prefer small helpers for capture and querying.
+- See `AGENTS.md` for conventions, testing tips, and common pitfalls.
+
 ### Quick deploy: Render.com
 1) New → Web Service → Connect this repo
 2) Environment: Node 20 (this repo sets `"engines": { "node": ">=20 <21" }`)
