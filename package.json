@@ -56,9 +56,10 @@
             "remark-gfm": "^4.0.1",
             "sonner": "^2.0.3",
             "tailwind-merge": "*",
+            "posthog-js": "^1.166.0",
             "vaul": "^1.1.2"
-      },
-      "devDependencies": {
+  },
+  "devDependencies": {
             "@testing-library/jest-dom": "^6.6.3",
             "@testing-library/react": "^16.0.1",
             "@types/node": "^20.10.0",
@@ -80,7 +81,8 @@
             "typecheck": "tsc -p tsconfig.json --noEmit",
             "test": "vitest",
             "test:run": "vitest run",
-            "test:coverage": "vitest run --coverage",
-            "tw:build": "tailwindcss -c tailwind.config.js -i src/styles/tw-utilities.css -o src/styles/tw-utilities.built.css --minify"
+      "test:coverage": "vitest run --coverage",
+      "test:analytics": "vitest run server/analytics.test.ts server/stats.test.ts src/components/CoverLetterGenerator.analytics.test.tsx",
+      "tw:build": "tailwindcss -c tailwind.config.js -i src/styles/tw-utilities.css -o src/styles/tw-utilities.built.css --minify"
       }
 }

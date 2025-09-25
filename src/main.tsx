@@ -8,6 +8,7 @@ import "./index.css";
 import "./styles/shadcn-tokens.css";
 // Generate missing Tailwind utility classes (spacing/padding/gap, etc.)
 import "./styles/tw-utilities.built.css";
+import { initAnalytics } from "./lib/analytics";
 
 function Router() {
   const path = window.location.pathname;
@@ -24,4 +25,7 @@ function Router() {
 }
 
 createRoot(document.getElementById("root")!).render(<Router />);
+
+// Initialize analytics after mount
+initAnalytics();
   

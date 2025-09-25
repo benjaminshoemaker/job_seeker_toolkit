@@ -136,6 +136,27 @@ Environment variables (required in production):
 - `ALLOWED_ORIGIN=https://your-domain` — exact origin for the browser (comma‑separated list allowed)
 - `PORT` — optional; most hosts set this for you
 
+## Analytics (PostHog)
+
+- Separate dev and production projects to avoid mixing data.
+- Client uses public keys; server uses project keys for ingestion and personal keys for querying counts.
+
+Env setup (see `.env.example`):
+- Client: `VITE_POSTHOG_DEV_KEY`, `VITE_POSTHOG_PROD_KEY`, optional `VITE_POSTHOG_HOST` (default `https://us.i.posthog.com`).
+- Server ingest: `POSTHOG_DEV_PROJECT_KEY`, `POSTHOG_PROD_PROJECT_KEY`, optional `POSTHOG_INGESTION_HOST`.
+- Server query: `POSTHOG_DEV_PROJECT_ID`, `POSTHOG_PROD_PROJECT_ID`, `POSTHOG_DEV_PERSONAL_API_KEY`, `POSTHOG_PROD_PERSONAL_API_KEY`, optional `POSTHOG_API_HOST` (default `https://app.posthog.com`).
+
+What’s wired up:
+- Client analytics initialized in `src/lib/analytics.ts` and called from `src/main.tsx`.
+- On successful generation, the server emits `cover_letter_generated` using PostHog ingestion. In dev, the client also emits the same event (tagged with `channel: 'client'`) so you can verify end‑to‑end.
+- The server provides `GET /api/stats/cover-letters` which returns `{ total }` using a HogQL query, cached for 60s.
+
+To render a counter in the UI later:
+```
+const res = await fetch('/api/stats/cover-letters');
+const { total } = await res.json();
+```
+
 ### Quick deploy: Render.com
 1) New → Web Service → Connect this repo
 2) Environment: Node 20 (this repo sets `"engines": { "node": ">=20 <21" }`)

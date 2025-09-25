@@ -26,6 +26,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import { getDistinctId, trackCoverLetterGeneratedDevOnly } from "../lib/analytics";
 
 interface CoverLetterGeneratorProps {
   onBack: () => void;
@@ -200,9 +201,10 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
     setIsGenerating(true);
 
     try {
+      const distinctId = getDistinctId();
       const res = await fetch('/api/cover-letter/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(distinctId ? { 'x-ph-distinct-id': distinctId } : {}) },
         body: JSON.stringify({ resume: resumeText, jd: jobDescText }),
       });
       const data = await res.json().catch(() => ({}));
@@ -210,6 +212,7 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
       const letter = String(data?.letter || '');
       setGeneratedLetter(letter);
       toast.success('Cover letter generated successfully!');
+      trackCoverLetterGeneratedDevOnly();
     } catch (error: any) {
       toast.error(String(error?.message || 'Failed to generate cover letter. Please try again.'));
     } finally {
