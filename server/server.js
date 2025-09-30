@@ -170,7 +170,7 @@ Hard constraints
 - Use ONLY facts from the resume and JD. No fabrication.
 - Mention {{company}} and {{role_title}} in the first sentence.
 - Include product_or_strategy_detail.
-- Evidence: use ≥2 quantified results from the resume. If only one number exists, use that plus one scale indicator (team size, budget, timeline). If neither exists → Output Rule 3.
+- Evidence: use ≥1 quantified results from the resume. If only one number exists, use that plus one scale indicator (team size, budget, timeline). If none exists → Output Rule 3.
 - Employer-first framing: state JD needs, then map proof to outcomes.
 - No headers, dates, addresses, salutations, or sign-offs.
 - Avoid boilerplate and clichés (e.g., “passionate,” “thrilled,” “world-class,” “dynamic self-starter”).
