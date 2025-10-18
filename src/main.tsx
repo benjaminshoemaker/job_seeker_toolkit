@@ -2,6 +2,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import CoverLetterPageV2 from "./tools/CoverLetterPageV2";
+import CompanyResearchPage from "./tools/CompanyResearchPage";
 import { SiteLayout } from "./components/layout/SiteLayout";
 import "./index.css";
 // Ensure shadcn/ui tokens are layered after base CSS
@@ -15,6 +16,11 @@ function Router() {
   if (path === "/tools/cover-letter") return (
     <SiteLayout>
       <CoverLetterPageV2 />
+    </SiteLayout>
+  );
+  if (path === "/tools/company-research") return (
+    <SiteLayout>
+      <CompanyResearchPage />
     </SiteLayout>
   );
   return (

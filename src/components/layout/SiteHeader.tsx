@@ -1,7 +1,7 @@
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Briefcase, ChevronDown, Code, Edit, Github, Heart, Lightbulb, Map, Bug } from "lucide-react";
+import { Briefcase, ChevronDown, Code, Edit, Github, Heart, Lightbulb, Map, Bug, FileText, Building2 } from "lucide-react";
 import { openContribute } from "../../lib/contribute";
 
 export function SiteHeader() {
@@ -18,6 +18,28 @@ export function SiteHeader() {
             </Badge>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button variant="outline" size="sm">
+                  Tools
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <a href="/tools/cover-letter">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Cover letter
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="/tools/company-research">
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Company research
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button variant="outline" size="sm">

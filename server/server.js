@@ -12,6 +12,7 @@ import { lookup } from 'node:dns/promises';
 import Busboy from 'busboy';
 import { checkLLMHealth } from './llmHealth.js';
 import { phCapture, phCountCoverLetters } from './analytics.js';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 8787);
 const BUILD_DIR = resolve(process.cwd(), 'build');
@@ -63,6 +64,75 @@ function sendJSON(res, code, obj) {
     'Cache-Control': 'no-store',
   });
   res.end(body);
+}
+
+// Lazy-load and cache the company research prompt template
+let COMPANY_PROMPT_SINGLE = '';
+function getCompanyPromptTemplate() {
+  if (COMPANY_PROMPT_SINGLE) return COMPANY_PROMPT_SINGLE;
+  try {
+    const p = resolve(process.cwd(), 'prompts', 'company_due_diligence_single.md');
+    COMPANY_PROMPT_SINGLE = readFileSync(p, 'utf8');
+  } catch (e) {
+    COMPANY_PROMPT_SINGLE = '# Company due-diligence prompt\n';
+  }
+  return COMPANY_PROMPT_SINGLE;
+}
+
+function sanitizeStr(v, max = 10000) {
+  return String(v || '').slice(0, max);
+}
+
+function isValidDateYYYYMMDD(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+}
+
+export function extractJSONAndMarkdown(raw) {
+  const text = String(raw || '').trim();
+  // Try fenced JSON block first
+  const fenceMatch = text.match(/```(?:json)?\n([\s\S]*?)\n```/i);
+  if (fenceMatch) {
+    try {
+      const obj = JSON.parse(fenceMatch[1]);
+      const markdown = text.replace(fenceMatch[0], '').trim();
+      return { json: obj, markdown };
+    } catch {}
+  }
+  // Fallback: search for trailing JSON object by scanning for opening braces from the end
+  for (let i = text.lastIndexOf('{'); i >= 0; i = text.lastIndexOf('{', i - 1)) {
+    const candidate = text.slice(i).trim();
+    try {
+      const obj = JSON.parse(candidate);
+      const markdown = text.slice(0, i).trim();
+      return { json: obj, markdown };
+    } catch {}
+  }
+  throw new Error('Invalid or missing JSON in model output');
+}
+
+export function validateCompanyResearchJSON(obj) {
+  if (!obj || typeof obj !== 'object') return { ok: false, error: 'Not an object' };
+  const mustStr = (v) => typeof v === 'string';
+  const mustNumOrNull = (v) => v === null || typeof v === 'number';
+  const mustArr = (v) => Array.isArray(v);
+  const ok = (
+    mustStr(obj.company) &&
+    mustStr(obj.stage) &&
+    obj.summary && mustStr(obj.summary.what) && mustStr(obj.summary.momentum) && mustStr(obj.summary.ai) && mustStr(obj.summary.leadership) && mustStr(obj.summary.verdict) &&
+    obj.leadership && mustStr(obj.leadership.founder_market_fit) && mustStr(obj.leadership.track_record) && mustStr(obj.leadership.org_stability) && mustStr(obj.leadership.board_governance) && mustStr(obj.leadership.ai_ownership) &&
+    obj.snapshot && mustArr(obj.snapshot.products) && mustArr(obj.snapshot.icp) && mustStr(obj.snapshot.pricing_model) && mustStr(obj.snapshot.geo) && mustStr(obj.snapshot.headcount_trend) &&
+    obj.financials && mustStr(obj.financials.profitability) && mustNumOrNull(obj.financials.cash_runway_months) && mustStr(obj.financials.burn_trend) && mustStr(obj.financials.customer_concentration) &&
+    obj.traction && mustNumOrNull(obj.traction.nrr) && mustNumOrNull(obj.traction.grr) && mustArr(obj.traction.acv_bands) && mustArr(obj.traction.logos) &&
+    obj.ai && mustStr(obj.ai.in_product) && mustStr(obj.ai.internal_use) && mustStr(obj.ai.stack) && mustStr(obj.ai.evals) && mustStr(obj.ai.safety_privacy) &&
+    obj.security_compliance && mustArr(obj.security_compliance.certs) && mustStr(obj.security_compliance.dpa) && mustStr(obj.security_compliance.residency) && mustStr(obj.security_compliance.retention) &&
+    obj.capital_structure && mustArr(obj.capital_structure.investors) && mustStr(obj.capital_structure.board) && mustStr(obj.capital_structure.prefs) && mustNumOrNull(obj.capital_structure.option_pool_remaining_pct) && mustStr(obj.capital_structure.secondaries) &&
+    obj.comp_equity && mustStr(obj.comp_equity.salary_signals) && obj.comp_equity.equity_scenarios && mustNumOrNull(obj.comp_equity.equity_scenarios.bear) && mustNumOrNull(obj.comp_equity.equity_scenarios.base) && mustNumOrNull(obj.comp_equity.equity_scenarios.bull) && mustStr(obj.comp_equity.assumptions) &&
+    obj.distribution && mustArr(obj.distribution.channels) && mustArr(obj.distribution.partnerships) && mustStr(obj.distribution.moat) && mustStr(obj.distribution.sales_motion) &&
+    obj.team_culture && mustStr(obj.team_culture.manager_signal) && mustStr(obj.team_culture.attrition_signal) && mustStr(obj.team_culture.rto_policy) &&
+    mustArr(obj.risks) && mustArr(obj.role_fit?.initiatives || []) && mustArr(obj.evidence_table) &&
+    obj.confidence && typeof obj.confidence.leadership === 'number' && typeof obj.confidence.financials === 'number' && typeof obj.confidence.ai === 'number' && typeof obj.confidence.overall === 'number'
+  );
+  return ok ? { ok: true } : { ok: false, error: 'Schema mismatch' };
 }
 
 function parseBody(req) {
@@ -683,6 +753,95 @@ const server = createServer(async (req, res) => {
         const msg = e?.name === 'AbortError' ? 'Timeout while fetching URL.' : 'Failed to fetch URL.';
         console.error('[api] /api/jd-from-url error', msg);
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 400, { error: msg });
+      }
+    }
+
+    // Company research endpoint
+    if (req.url === '/api/company-research' && req.method === 'POST') {
+      if (!OPENAI_API_KEY) return sendJSON(res, 500, { error: 'Missing OPENAI_API_KEY' });
+      let body;
+      try { body = await parseBody(req); } catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
+      const company = sanitizeStr(body?.company, MAX_INPUT);
+      if (!company.trim()) return sendJSON(res, 400, { error: 'company is required' });
+      const role_function = sanitizeStr(body?.role_function, 2000);
+      const location_mode = sanitizeStr(body?.location_mode, 200);
+      const today = sanitizeStr(body?.today || new Date().toISOString().slice(0,10), 20);
+      if (!isValidDateYYYYMMDD(today)) return sendJSON(res, 400, { error: 'today must be YYYY-MM-DD' });
+      const rd = body?.role_details || {};
+      const ch = body?.company_hints || {};
+      const role_details = {
+        job_url: sanitizeStr(rd?.job_url, 2000),
+        job_title: sanitizeStr(rd?.job_title, 200),
+        team: sanitizeStr(rd?.team, 200),
+        jd_text: sanitizeStr(rd?.jd_text, MAX_INPUT),
+      };
+      const company_hints = {
+        products: Array.isArray(ch?.products) ? ch.products.slice(0, 12).map((s) => sanitizeStr(s, 120)) : [],
+        competitors: Array.isArray(ch?.competitors) ? ch.competitors.slice(0, 12).map((s) => sanitizeStr(s, 120)) : [],
+        execs: Array.isArray(ch?.execs) ? ch.execs.slice(0, 12).map((s) => sanitizeStr(s, 120)) : [],
+        urls: ch?.urls ? {
+          careers: sanitizeStr(ch?.urls?.careers, 1000),
+          blog: sanitizeStr(ch?.urls?.blog, 1000),
+          press: sanitizeStr(ch?.urls?.press, 1000),
+          docs: sanitizeStr(ch?.urls?.docs, 1000),
+        } : undefined,
+        notes: sanitizeStr(ch?.notes, MAX_INPUT),
+      };
+
+      // size guard
+      const approxSize = JSON.stringify({ company, role_function, location_mode, today, role_details, company_hints }).length;
+      if (approxSize > 50_000) return sendJSON(res, 413, { error: 'Input too large' });
+
+      const sys = 'You are a no-hype, evidence-driven analyst. Short sentences. Cite every non-obvious claim with link and date.';
+      const tmpl = getCompanyPromptTemplate();
+      function fmtList(arr) { return Array.isArray(arr) && arr.length ? arr.join(', ') : ''; }
+      const user = tmpl
+        .replaceAll('[Company]', company)
+        .replaceAll('[YYYY-MM-DD]', today)
+        .replaceAll('[text or empty]', role_function || '')
+        .replaceAll('[url or empty]', role_details.job_url || '')
+        .replaceAll('[careers/blog/press/docs or empty]', (company_hints.urls ? JSON.stringify(company_hints.urls) : ''))
+        .replaceAll('[list or empty]', '') // keep template neutral for lists
+        .replaceAll('[multiline or empty]', '')
+        .concat('\n\n')
+        .concat('Additional context (verbatim if present):\n')
+        .concat(role_function ? `- role_function: ${role_function}\n` : '')
+        .concat(location_mode ? `- location_mode: ${location_mode}\n` : '')
+        .concat(role_details.job_url ? `- job_url: ${role_details.job_url}\n` : '')
+        .concat(role_details.job_title ? `- job_title: ${role_details.job_title}\n` : '')
+        .concat(role_details.team ? `- team: ${role_details.team}\n` : '')
+        .concat(role_details.jd_text ? `- jd_text: ${role_details.jd_text}\n` : '')
+        .concat(company_hints.products?.length ? `- products: ${fmtList(company_hints.products)}\n` : '')
+        .concat(company_hints.competitors?.length ? `- competitors: ${fmtList(company_hints.competitors)}\n` : '')
+        .concat(company_hints.execs?.length ? `- execs: ${fmtList(company_hints.execs)}\n` : '')
+        .concat(company_hints.urls ? `- urls: ${JSON.stringify(company_hints.urls)}\n` : '')
+        .concat(company_hints.notes ? `- notes: ${company_hints.notes}\n` : '');
+
+      const base = { model: OPENAI_MODEL, instructions: sys, input: user, response_format: { type: 'text' }, modalities: ['text'], temperature: 0.1 };
+      const ac = new AbortController();
+      const timeout = setTimeout(() => ac.abort(), MODEL_TIMEOUT_MS);
+      try {
+        const r = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+          body: JSON.stringify({ ...base, max_output_tokens: 1800 }),
+          signal: ac.signal,
+        });
+        clearTimeout(timeout);
+        if (!r.ok) return sendJSON(res, 502, { error: `Provider error (${r.status})` });
+        const data = await r.json().catch(() => ({}));
+        const text = typeof data?.output_text === 'string' ? data.output_text : (Array.isArray(data?.choices) ? (data.choices[0]?.message?.content || '') : '');
+        if (!text) return sendJSON(res, 502, { error: 'Empty model response' });
+        let parsed;
+        try { parsed = extractJSONAndMarkdown(text); } catch (e) { return sendJSON(res, 422, { error: 'Failed to parse model output: ' + (e?.message || 'unknown') }); }
+        const v = validateCompanyResearchJSON(parsed.json);
+        if (!v.ok) return sendJSON(res, 422, { error: 'Invalid JSON schema from model' });
+        const distinctId = String(req.headers['x-ph-distinct-id'] || '').trim() || undefined;
+        phCapture({ event: 'company_research_generated', properties: { channel: 'server' }, distinct_id: distinctId });
+        return sendJSON(res, 200, { markdown: parsed.markdown, json: parsed.json });
+      } catch (e) {
+        const msg = e?.name === 'AbortError' ? 'Provider timeout' : (e?.message || 'Generation failed');
+        return sendJSON(res, e?.name === 'AbortError' ? 504 : 500, { error: msg });
       }
     }
 

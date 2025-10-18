@@ -102,7 +102,8 @@ const tools: Tool[] = [
     icon: <MessageSquare className="w-5 h-5" />,
     badge: "Internal",
     category: "Interview Prep",
-    comingSoon: true,
+    comingSoon: false,
+    href: "/tools/company-research",
     aiSummary: "Effective interview prep requires both technical knowledge and communication skills. Our assistant will provide industry-specific questions, behavioral scenarios, and real-time feedback to build confidence."
   },
 

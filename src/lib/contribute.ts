@@ -9,6 +9,8 @@ function getEditPathForLocation(pathname: string): string | null {
       return 'src/App.tsx';
     case '/tools/cover-letter':
       return 'src/tools/CoverLetterPageV2.tsx';
+    case '/tools/company-research':
+      return 'src/tools/CompanyResearchPage.tsx';
     default:
       return null;
   }

@@ -54,5 +54,14 @@ export function trackCoverLetterGeneratedDevOnly() {
   } catch {}
 }
 
-export { posthog }
+export function trackCompanyResearchGeneratedDevOnly() {
+  if (import.meta.env.PROD) return
+  try {
+    // @ts-ignore
+    if (typeof posthog.capture === 'function') {
+      posthog.capture('company_research_generated', { channel: 'client' })
+    }
+  } catch {}
+}
 
+export { posthog }
