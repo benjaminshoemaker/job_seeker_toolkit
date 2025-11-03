@@ -39,6 +39,16 @@ Open http://localhost:3000/tools/cover-letter
   - Upload resume (PDF/DOCX): Drag-and-drop or choose a file (≤ 5 MB). The server extracts text and you can edit it before generating.
   - Paste resume text: Paste text directly and continue to the editor.
 - The Job Description (JD) remains paste-only (≤10k chars).
+- If the model cannot infer the company or role title from the JD, the response contains instructions to prepend them manually:
+
+  ```
+  Company: [Company Name]
+  Role: [Role Title]
+
+  <Rest of job description>
+  ```
+
+  Add those lines above the JD text and retry generation.
 - A read-only textbox renders the letter as exactly three paragraphs; click Copy to copy to clipboard.
 - Timeouts are enforced at 20s; errors surface as toasts with a retry option.
 
@@ -68,6 +78,13 @@ Tests included:
   - Empty-input behavior (no API call)
   - Paragraph normalization to exactly three paragraphs
   - Loading state during an 8s mocked delay
+- Client analytics: `src/components/CoverLetterGenerator.analytics.test.tsx`
+  - Distinct-id header wiring
+  - Manual JD metadata error shows template and skips analytics tracking
+- Prompt + server glue: `server/prompt.test.ts`
+  - Prompt only exposes the JD metadata failure with manual entry template
+  - `ensureThreeParagraphs` normalization
+  - OpenAI handler surfaces JD metadata errors with manual guidance
 - Backend: `server/extract.test.ts`
   - Type/size validation
   - Scanned-PDF detection emits OCR warning

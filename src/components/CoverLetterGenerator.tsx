@@ -208,6 +208,13 @@ export function CoverLetterGenerator({ onBack }: CoverLetterGeneratorProps) {
         body: JSON.stringify({ resume: resumeText, jd: jobDescText }),
       });
       const data = await res.json().catch(() => ({}));
+
+      // Handle INSUFFICIENT_JD_METADATA error by displaying message in output
+      if (!res.ok && data?.error === 'INSUFFICIENT_JD_METADATA') {
+        setGeneratedLetter(data?.message || 'Could not identify company or role from job description.');
+        return;
+      }
+
       if (!res.ok) throw new Error(data?.error || 'Generation failed');
       const letter = String(data?.letter || '');
       setGeneratedLetter(letter);

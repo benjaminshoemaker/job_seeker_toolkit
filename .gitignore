@@ -30,3 +30,6 @@ Thumbs.db
 *.log
 logs/
 
+# Scripts
+scripts/.docs-prompt-hash
+
