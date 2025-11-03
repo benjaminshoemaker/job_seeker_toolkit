@@ -170,14 +170,14 @@ Hard constraints
 - Use ONLY facts from the resume and JD. No fabrication.
 - Mention {{company}} and {{role_title}} in the first sentence.
 - Include product_or_strategy_detail.
-- Evidence: use ≥1 quantified results from the resume. If only one number exists, use that plus one scale indicator (team size, budget, timeline). If none exists → Output Rule 3.
+- Evidence: use quantified results from the resume when available, prioritizing hard numbers > scale indicators > relative improvements > specific distinctions. If metrics are absent, work with qualitative achievements and specific accomplishments from the resume.
 - Employer-first framing: state JD needs, then map proof to outcomes.
 - No headers, dates, addresses, salutations, or sign-offs.
-- Avoid boilerplate and clichés (e.g., “passionate,” “thrilled,” “world-class,” “dynamic self-starter”).
+- Avoid boilerplate and clichés (e.g., "passionate," "thrilled," "world-class," "dynamic self-starter").
 - Limit first-person sentence starts to ≤2 sentences total.
 - Humanity Touch (each exactly once, specific and factual):
 	- One unusual, concrete resume detail a generic AI would miss.
-	- A genuine tie to {{company}}’s mission/product grounded in JD specifics.
+	- A genuine tie to {{company}}'s mission/product grounded in JD specifics.
 	- One brief authentic-voice line that sounds plausibly human and not templated.
 
 Writing Style:
@@ -201,13 +201,13 @@ Writing Style:
 
 Micro-method
 - Infer top JD needs/outcomes.
-- Select 2–3 resume proof points with concrete metrics. Priority: hard numbers > scale indicators > relative improvements > specific distinctions.
+- Select 2–3 resume proof points, prioritizing concrete metrics when available. If no metrics exist, use specific achievements, technologies, or relevant experience.
 - If a risk is implied (relocation/industry switch/gap), add one risk-reduction line tied to JD needs.
-- Write: opening (1–2 sentences with goal and fit), core (4–6 sentences with measurable impact), close (1–2 sentences with specific motivation + one concrete thing you would deliver).
+- Write: opening (1–2 sentences with goal and fit), core (4–6 sentences with measurable impact when possible), close (1–2 sentences with specific motivation + one concrete thing you would deliver).
 
 Quality checks
 - References {{company}}, {{role_title}}, and product_or_strategy_detail.
-- ≥2 quantified results from resume.
+- Uses quantified results from resume when available; otherwise uses specific qualitative achievements.
 - 1+ specific JD detail integrated.
 - 180–240 words, 2–3 paragraphs.
 - No fabrication. No copy-paste of resume bullets.
@@ -215,30 +215,23 @@ Quality checks
 AI style filter
 - Ban: em dashes, ellipses, exclamation marks, rhetorical questions.
 - Semicolons ≤1. Prefer periods.
-- Digits for 2+ and metrics; no ~, +, ≈ unless present in resume; use “about/over”.
+- Digits for 2+ and metrics; no ~, +, ≈ unless present in resume; use "about/over".
 - No quotes around ordinary terms.
-- Delete boilerplate phrases (examples: “I am writing to express my interest”, “excited to apply”, “proven track record”, “fast-paced environments”, “cutting-edge”, “world-class”, “synergy”, “dynamic self-starter”, “Dear Hiring Manager,”).
-- Replace “leverage/utilize” with “use” when adequate.
+- Delete boilerplate phrases (examples: "I am writing to express my interest", "excited to apply", "proven track record", "fast-paced environments", "cutting-edge", "world-class", "synergy", "dynamic self-starter", "Dear Hiring Manager,").
+- Replace "leverage/utilize" with "use" when adequate.
 - Never use the following words/phrases: "passionate", "thrilled", "synergy", "world-class", "rockstar", "ninja", "guru", "wizard", "dynamic self-starter", "think outside the box"
-- Phrases like “results-oriented,” “detail-oriented,” “strong communicator,” “team player,” “passionate about [industry]” must either be removed or immediately followed by a metric-backed proof in the same paragraph. If no proof available, delete.
-- Sentence starters “Additionally,” “Furthermore,” “Moreover,” “In addition,” “As such,” “Thus,” “Therefore,” “Overall”: ≤1 total; vary syntax.
-- Adverbs ending in “-ly”: ≤3 total.
+- Phrases like "results-oriented," "detail-oriented," "strong communicator," "team player," "passionate about [industry]" must either be removed or immediately followed by a metric-backed proof in the same paragraph. If no proof available, delete.
+- Sentence starters "Additionally," "Furthermore," "Moreover," "In addition," "As such," "Thus," "Therefore," "Overall": ≤1 total; vary syntax.
+- Adverbs ending in "-ly": ≤3 total.
 
 Output rules (choose exactly one)
-1) Gate passed and evidence available → Output only the final cover-letter body text. Nothing else.
+1) Gate passed → Output only the final cover-letter body text. Nothing else.
 2) JD gate failed →
 {
 "status": "error",
 "error": "INSUFFICIENT_JD_METADATA",
-"missing": ["company" | "role_title"],
-"notes": "<one-line reason>"
-}
-3) Resume evidence insufficient →
-{
-"status": "error",
-"error": "INSUFFICIENT_RESUME_EVIDENCE",
-"missing": ["two_quantified_results"],
-"found": ["<brief quotes of any metrics found>"]
+"message": "Could not identify the company name or role title from the job description. Please add this information at the top of the job description using this format:\\n\\nCompany: [Company Name]\\nRole: [Role Title]\\n\\n[Rest of job description]",
+"missing": ["company" | "role_title"]
 }`;
   return { system, user };
 }
@@ -308,7 +301,7 @@ async function callOpenAI(resume, jd, signal) {
         text = data.choices?.[0]?.message?.content || '';
       }
       const raw = String(text || '').trim();
-      // If model returned an error JSON despite high confidence, try to salvage
+      // If model returned an error JSON, try to salvage or propagate the error
       try {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.status === 'error' && parsed.error === 'INSUFFICIENT_JD_METADATA') {
@@ -356,10 +349,18 @@ async function callOpenAI(resume, jd, signal) {
             console.warn('[openai] Overriding JD gate failure using extracted candidates', { company, role_title, conf });
             const letter = await composeLetterWithOverrides(resume, jd, { company, role_title, detail }, signal, request, buildBody);
             return ensureThreeParagraphs(String(letter || '').trim());
+          } else {
+            // Salvage failed - throw error with the message from the LLM
+            const err = new Error(parsed.message || 'INSUFFICIENT_JD_METADATA');
+            err.code = 'INSUFFICIENT_JD_METADATA';
+            err.metadata = parsed;
+            throw err;
           }
         }
-      } catch (_) {
-        // Not JSON or salvage not applicable; continue
+      } catch (e) {
+        // If it's our INSUFFICIENT_JD_METADATA error, re-throw it
+        if (e?.code === 'INSUFFICIENT_JD_METADATA') throw e;
+        // Otherwise, not JSON or salvage not applicable; continue
       }
 
       return ensureThreeParagraphs(raw);
@@ -400,7 +401,7 @@ async function callOpenAI(resume, jd, signal) {
 
 async function composeLetterWithOverrides(resume, jd, { company, role_title, detail }, signal, request, buildBody) {
   const system = "You write professional cover letters using only the supplied resume and job description. Do not invent facts. Body text only. No headers or contact blocks.";
-  const user = `Title: Single-Pass Cover Letter Writer — Compose Only\n\nInputs\n- Job description (JD): ${jd}\n- Resume: ${resume}\n- Gate is pre-approved with:\n  - company: ${company}\n  - role_title: ${role_title}\n  - product_or_strategy_detail: ${detail || '(optional)'}\n\nTask\nWrite ONLY the cover letter body (no JSON, no headers), 180–240 words, 2–3 paragraphs.\nConstraints\n- Mention ${company} and ${role_title} in the first sentence.\n- Include the product_or_strategy_detail if relevant.\n- Use only facts from the resume and JD; include at least two quantified results from the resume if available.\n- No salutations or sign-offs. Body text only.`;
+  const user = `Title: Single-Pass Cover Letter Writer — Compose Only\n\nInputs\n- Job description (JD): ${jd}\n- Resume: ${resume}\n- Gate is pre-approved with:\n  - company: ${company}\n  - role_title: ${role_title}\n  - product_or_strategy_detail: ${detail || '(optional)'}\n\nTask\nWrite ONLY the cover letter body (no JSON, no headers), 180–240 words, 2–3 paragraphs.\nConstraints\n- Mention ${company} and ${role_title} in the first sentence.\n- Include the product_or_strategy_detail if relevant.\n- Use only facts from the resume and JD; use quantified results when available, otherwise work with qualitative achievements and specific accomplishments from the resume.\n- No salutations or sign-offs. Body text only.`;
 
   const base = {
     model: OPENAI_MODEL,
@@ -554,6 +555,16 @@ const server = createServer(async (req, res) => {
         return sendJSON(res, 200, { letter });
       } catch (e) {
         clearTimeout(timeout);
+        // Handle INSUFFICIENT_JD_METADATA error specially
+        if (e?.code === 'INSUFFICIENT_JD_METADATA') {
+          console.warn('[openai] JD metadata extraction failed', e.message);
+          return sendJSON(res, 400, {
+            error: 'INSUFFICIENT_JD_METADATA',
+            message: e.message,
+            metadata: e.metadata
+          });
+        }
+        // Handle other errors
         const msg = e?.name === 'AbortError' ? 'Provider timeout' : (e?.message || 'Generation failed');
         console.error('[openai] Error', msg);
         return sendJSON(res, e?.name === 'AbortError' ? 504 : 500, { error: msg });
@@ -735,3 +746,6 @@ export async function buildStatsResponse() {
     return { code: 500, data: { error: 'stats_failed' } };
   }
 }
+
+export const __promptInternals = { buildPrompts };
+export const __serverInternals = { ensureThreeParagraphs, callOpenAI, composeLetterWithOverrides };

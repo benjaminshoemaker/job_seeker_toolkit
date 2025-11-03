@@ -144,6 +144,36 @@ describe('CoverLetterGenerator generation flows', () => {
     });
   });
 
+  it('displays INSUFFICIENT_JD_METADATA error message with template in output box', async () => {
+    const errorMessage = 'Could not identify the company name or role title from the job description. Please add this information at the top of the job description using this format:\n\nCompany: [Company Name]\nRole: [Role Title]\n\n[Rest of job description]';
+
+    vi.spyOn(global, 'fetch' as any).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: 'INSUFFICIENT_JD_METADATA',
+          message: errorMessage,
+          metadata: { missing: ['company', 'role_title'] }
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(<CoverLetterGenerator onBack={() => {}} />);
+    fillResumePaste('Resume with no company info');
+    fillJDPaste('Vague job description without company or role');
+
+    fireEvent.click(screen.getByRole('button', { name: /generate cover letter/i }));
+
+    // Error message should appear in the output textarea
+    await waitFor(() => {
+      const output = document.querySelector('textarea[readonly]') as HTMLTextAreaElement | null;
+      expect(output).not.toBeNull();
+      expect(output!.value).toContain('Could not identify the company name or role title');
+      expect(output!.value).toContain('Company: [Company Name]');
+      expect(output!.value).toContain('Role: [Role Title]');
+    });
+  });
+
   it('works with multiple realistic mock pairs (table-driven)', async () => {
     const cases = [
       {

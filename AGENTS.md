@@ -27,10 +27,11 @@ Environment & secrets
   - Optional region hosts: `VITE_POSTHOG_HOST`, `POSTHOG_INGESTION_HOST`, `POSTHOG_API_HOST`.
 
 Testing rules
-- Do not start long‑running servers in tests. `server/server.js` now guards against starting the listener under Vitest, but prefer testing helpers (`server/analytics.js`) or exported builder functions (e.g., `buildStatsResponse`).
+- Do not start long-running servers in tests. `server/server.js` now guards against starting the listener under Vitest, but prefer testing helpers (`server/analytics.js`) or exported builder functions (e.g., `buildStatsResponse`).
 - Frontend tests should mock network (`global.fetch`) and analytics (`src/lib/analytics`).
 - For backend analytics tests, mock `global.fetch` and reset the analytics cache via `__resetStatsCache()`.
-- Run tests with `npm run test:run`. Analytics‑focused tests: `npm run test:analytics`. Coverage: `npm run test:coverage` then open `coverage/index.html`.
+- Prompt updates must keep `server/prompt.test.ts` green; it asserts the manual JD metadata fallback messaging remains accurate and that the resume-evidence failure path stays removed.
+- Run tests with `npm run test:run`. Analytics-focused tests: `npm run test:analytics`. Coverage: `npm run test:coverage` then open `coverage/index.html`.
 
 Coding style & constraints
 - Keep changes minimal and focused. Avoid broad refactors unless requested.
@@ -41,4 +42,4 @@ Common pitfalls
 - EADDRINUSE during tests: ensure no external server is running; tests should not start the server.
 - CORS in production: set `ALLOWED_ORIGIN` correctly; `/api` will 403 otherwise.
 - PostHog domains: Web Analytics Domains must be exact origins (no wildcards); add dev and prod origins separately.
-
+- Cover letter prompt should only fail when company or role title cannot be inferred. The error shown to users must instruct them to add `Company: [Company Name]` and `Role: [Role Title]` at the top of the job description; keep client copy in sync with `server/server.js` and related tests.
